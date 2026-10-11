@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#fcf9f2" />
+    <script>if (location.protocol === 'file:') location.replace('http://localhost:3000/' + location.hash);</script>
     <meta name="description" content="A little science. A lot of skin love. Explore skimple's playful skincare research prototype." />
     <title>skimple — Skincare made simple</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
@@ -11,6 +12,7 @@
     <link rel="stylesheet" href="profile.css" />
     <script src="profile.js" defer></script>
     <script src="app.js" defer></script>
+    <script src="live.js" defer></script>
   </head>
   <body>
     <header class="site-header">
@@ -25,7 +27,7 @@
       </div>
     </header>
     <main id="app"></main>
-    <footer class="site-footer"><a class="brand small" href="#">skimple<span class="brand-flower" aria-hidden="true">✳</span></a><span>Skincare made simple</span><span class="demo-label"><i></i> A little make-believe · Interactive demo</span></footer>
+    <footer class="site-footer"><a class="brand small" href="#">skimple<span class="brand-flower" aria-hidden="true">✳</span></a><span>Skincare made simple</span><span class="demo-label"><i></i> Published formulas · Source-linked research</span></footer>
     <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </body>

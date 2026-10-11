@@ -1,4 +1,4 @@
-/* Connect the illustrated UI to Skimple's API. The six original shelf items remain demos. */
+/* Source the product shelf and personal skin space from Skimple's API. */
 'use strict';
 
 const apiBase = window.SKIMPLE_API_URL || 'http://localhost:8000';
@@ -35,14 +35,14 @@ async function request(path, options = {}) {
 
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const idempotency = () => crypto.randomUUID();
-const categoryName = value => ({cleanser:'Cleansers',serum:'Serums',moisturizer:'Moisturizers',sunscreen:'Sunscreens'}[String(value).toLowerCase()] || value || 'Other');
+const categoryName = value => ({cleanser:'Cleansers',serum:'Serums',moisturizer:'Moisturizers',sunscreen:'Sunscreens',exfoliant:'Exfoliants'}[String(value).toLowerCase()] || value || 'Other');
 const inferredCategory = name => /cleanser|wash/i.test(name) ? 'Cleansers' : /serum/i.test(name) ? 'Serums' : /sunscreen|spf|sun cream/i.test(name) ? 'Sunscreens' : /moistur|cream|lotion|balm/i.test(name) ? 'Moisturizers' : 'Other';
 const safeLink = url => /^https?:\/\//i.test(url || '') ? escapeHTML(url) : '#';
 const list = value => Array.isArray(value) ? value : [];
 const message = error => error instanceof Error ? error.message : String(error);
-function isLive(p) { return !!p?.reportId; }
-const productKey = id => id.startsWith('report-') ? `report:${id.slice(7)}` : `demo:${id}`;
-const productId = key => key.startsWith('report:') ? `report-${key.slice(7)}` : key.slice(5);
+function isLive(p) { return !!(p?.reportId || p?.catalogKey); }
+const productKey = id => id.startsWith('report-') ? `report:${id.slice(7)}` : `catalog:${id}`;
+const productId = key => key.startsWith('report:') ? `report-${key.slice(7)}` : key.startsWith('catalog:') ? key.slice(8) : key.slice(5);
 
 productCard = function(p, index) {
   const card = original.productCard(p, index);
@@ -95,23 +95,42 @@ function reportProduct(row) {
   };
 }
 
+function catalogProduct(row) {
+  const p = reportProduct({...row,report_id:null});
+  const metadata = row.source_metadata || {};
+  const key = row.catalog_key;
+  return {...p,id:key,catalogKey:key,reportId:null,literature:list(row.literature),
+    sourceUrl:row.source_url,sourceMetadata:metadata,region:row.region,
+    formulaIngredients:list(row.ingredients),
+    asset:['byoma','ordinary','joseon','cerave','laroche','cocokind'].includes(key) ? key : 'scanned',
+    tag:'Sourced product',kind:`${row.variant} · ${row.region}`,
+    summary:metadata.summary || 'Published product formula.',
+    takeaway:'The formula, with its sources.',caution:metadata.notes || '',
+    papers:new Set(list(row.literature).map(paper => paper.pmid)).size,
+  };
+}
+
 async function loadLiveData() {
+  state.catalogStatus = 'loading';
+  if ($('#product-grid')) renderShelfGrid();
   try {
-    const [reports, saved, profile, ownedProducts] = await Promise.all([
+    const [reports, saved, profile, ownedProducts, shelf] = await Promise.all([
       request('/v1/me/reports'), request('/v1/me/saved'), request('/v1/me/skin-profile'), request('/v1/me/owned'),
+      request('/v1/catalog'),
     ]);
     const live = list(reports.reports).map(reportProduct);
-    state.products = [...catalog, ...state.products.filter(p => p.id.startsWith('demo-')), ...live];
-    const remoteSaved = new Set(list(saved.product_keys).map(key => key.startsWith('report:') ? `report-${key.slice(7)}` : key.slice(5)));
+    catalog.splice(0, catalog.length, ...list(shelf.products).map(catalogProduct));
+    state.products = [...catalog, ...live];
+    const remoteSaved = new Set(list(saved.product_keys).map(productId).filter(id => state.products.some(p => p.id === id)));
     for (const id of state.saved) {
       if (remoteSaved.has(id)) continue;
-      if (id.startsWith('demo-') || catalog.some(p => p.id === id)) {
+      if (catalog.some(p => p.id === id)) {
         remoteSaved.add(id);
-        void request(`/v1/me/saved/demo:${id}`, {method:'PUT'}).catch(() => {});
+        void request(`/v1/me/saved/${productKey(id)}`, {method:'PUT'}).catch(() => {});
       }
     }
     state.saved = remoteSaved;
-    const remoteOwned = new Set(list(ownedProducts.product_keys).map(productId));
+    const remoteOwned = new Set(list(ownedProducts.product_keys).map(productId).filter(id => state.products.some(p => p.id === id)));
     for (const id of state.owned) {
       if (remoteOwned.has(id) || !state.products.some(p => p.id === id)) continue;
       remoteOwned.add(id);
@@ -131,10 +150,13 @@ async function loadLiveData() {
     }
     else if (state.profile) profileSync = request('/v1/me/skin-profile', {method:'PUT', body:JSON.stringify(profileForApi(state.profile))}).catch(error => console.warn('Profile migration failed:', message(error)));
     liveReady = true;
+    state.catalogStatus = 'ready';
     route();
   } catch (error) {
+    state.catalogStatus = 'error';
+    if ($('#product-grid')) renderShelfGrid();
     console.warn('Skimple API unavailable:', message(error));
-    toast('The live service is unavailable. You can still explore the sample shelf.');
+    toast('The product service is unavailable. Please try again shortly.');
   }
 }
 
@@ -151,6 +173,7 @@ receiveUpload = function(file, target) {
 
 renderScan = function() {
   original.renderScan();
+  $('[data-action="demo-product"]', modal)?.remove();
   const note = $('.privacy-note', modal);
   if (note && !state.scan.demo) note.innerHTML = `${icon('shield')}Product photos are sent privately for label reading and expire from storage.`;
 };
@@ -278,6 +301,12 @@ startAnalysis = async function(data) {
 persistProfile = function() {
   original.persistProfile();
   if (state.profile) profileSync = request('/v1/me/skin-profile', {method:'PUT', body:JSON.stringify(profileForApi(state.profile))})
+    .then(async () => {
+      const shelf = await request('/v1/catalog');
+      catalog.splice(0, catalog.length, ...list(shelf.products).map(catalogProduct));
+      state.products = [...catalog, ...state.products.filter(p => p.reportId)];
+      route();
+    })
     .catch(error => { toast(`Skin profile could not sync: ${message(error)}`); throw error; });
   void profileSync.catch(() => {});
 };
@@ -304,10 +333,10 @@ processFace = async function() {
 renderDetail = function(p) {
   original.renderDetail(p);
   if (!isLive(p)) return;
-  $('.detail-intro .small-copy').textContent = `${p.kind} · Confirmed formula`;
-  $('.detail-intro .research-summary').innerHTML = `${icon('flask')}${p.reviews.toLocaleString()} permitted review observations · ${p.papers} linked papers`;
+  $('.detail-intro .small-copy').textContent = `${p.kind} · ${p.catalogKey ? 'Published formula' : 'Confirmed formula'}`;
+  $('.detail-intro .research-summary').innerHTML = `${icon('flask')}${p.reviews.toLocaleString()} permitted review observations · ${p.papers} ${p.catalogKey ? 'ingredient literature records' : 'linked papers'}`;
   const tag = $('.detail-intro .tags .pill');
-  if (tag) tag.innerHTML = `${icon('check')} Your report`;
+  if (tag) tag.innerHTML = `${icon('check')} ${p.catalogKey ? 'Source-linked formula' : 'Your report'}`;
   const category = $('.detail-intro .tags .pill.coral');
   if (category) category.textContent = p.category === 'Other' ? 'Product' : p.category.slice(0,-1);
 };
@@ -333,6 +362,22 @@ renderReportTab = function() {
     html = `<h2>A peek behind the claims.</h2><p>Source-linked findings from reviewed ingredient research.</p>${papers.length ? papers.map(paper => `<article class="source-card"><span class="pill">${escapeHTML(paper.relation || 'Linked paper')}</span><h3 style="margin-top:12px">${escapeHTML(paper.title)}</h3><div class="source-meta">${escapeHTML(paper.ingredient)} · ${escapeHTML(paper.year || 'Year unavailable')} · ${escapeHTML(paper.doi || paper.pmid || 'Source record')}</div><a class="text-button" href="${safeLink(paper.url)}" target="_blank" rel="noopener noreferrer">Read the paper ↗</a></article>`).join('') : '<div class="source-notice">No reviewed, source-linked papers are available for this formula yet.</div>'}`;
   }
   $('#report-content').innerHTML = html;
+  if (p.catalogKey) {
+    const source = `<div class="source-notice"><a href="${safeLink(p.sourceUrl)}" target="_blank" rel="noopener noreferrer">Published product source ↗</a> · ${escapeHTML(p.region)} · Checked ${escapeHTML(p.sourceMetadata.retrieved_on || '')}<p>${escapeHTML(p.sourceMetadata.usage || '')}</p></div>`;
+    $('#report-content').insertAdjacentHTML('afterbegin', source);
+    if (state.tab === 'sources') {
+      $('#report-content').insertAdjacentHTML('beforeend', `<h3>Ingredient literature</h3><p>These studies concern ingredients or other formulations. Abstract extractions await scientific review and do not establish this product’s performance.</p>${p.literature.map(paper => `<article class="source-card"><span class="pill">${paper.status === 'reviewed' ? 'Reviewed study extraction' : 'Awaiting scientific review'}</span><h3>${escapeHTML(paper.title)}</h3><div class="source-meta">${escapeHTML(paper.ingredient)} · ${escapeHTML(paper.year)} · PMID ${escapeHTML(paper.pmid)} · ${escapeHTML(paper.design)}</div><p>${escapeHTML(paper.population)} · Concentration: ${escapeHTML(paper.concentration || 'Not stated')} · Sample: ${paper.sample_size ?? 'Not stated'}</p><p>${list(paper.limitations).map(escapeHTML).join(' ')}</p><a class="text-button" href="${safeLink(paper.url)}" target="_blank" rel="noopener noreferrer">Read the PubMed record ↗</a></article>`).join('') || '<p>No ingredient literature is staged for this formula.</p>'}`);
+    }
+    if (state.tab === 'ingredients') {
+      $('.inci .section-label').textContent = 'Full published ingredient list';
+      const disclosed = p.formulaIngredients.filter(i => i.disclosed_concentration);
+      if (disclosed.length) $('.inci').insertAdjacentHTML('beforeend', `<p>Disclosed concentrations: ${disclosed.map(i => escapeHTML(`${i.inci_name} ${i.disclosed_concentration}`)).join(', ')}.</p>`);
+    }
+    if (state.tab === 'overview') {
+      const paperMetric = $$('.metric')[1];
+      if (paperMetric) paperMetric.querySelector('span').textContent = 'ingredient literature records';
+    }
+  }
 };
 
 sendChat = async function(question) {
@@ -344,7 +389,8 @@ sendChat = async function(question) {
   $('#chat-input').value = '';
   state.busy = true; renderMessages();
   try {
-    const reply = await request(`/v1/reports/${p.reportId}/chat`, {method:'POST',body:JSON.stringify({question:text})});
+    const path = p.catalogKey ? `/v1/catalog/${p.catalogKey}/chat` : `/v1/reports/${p.reportId}/chat`;
+    const reply = await request(path, {method:'POST',body:JSON.stringify({question:text})});
     state.messages[p.id].push({role:'assistant',text:reply.answer,source:reply.source});
   } catch (error) {state.messages[p.id].push({role:'assistant',text:`I could not load this answer: ${message(error)}`});}
   finally {state.busy = false; renderMessages();}
@@ -353,7 +399,7 @@ sendChat = async function(question) {
 showHow = function() {
   original.showHow();
   const notice = $('.source-notice', modal);
-  if (notice) notice.textContent = 'The six illustrated shelf products are interactive examples. Scanned products use the live label, analysis, review, and research services; coverage varies by product.';
+  if (notice) notice.textContent = 'Shelf products use published formulas and real source records. Ingredient literature is kept separate from scientifically reviewed claims. Product reviews appear only when their source is approved.';
   const photoStep = $('.how-step:nth-child(3) p', modal);
   if (photoStep) photoStep.textContent = 'Share skin preferences or, when available, consent to a face photo for visible observations. Photos expire.';
 };
@@ -362,6 +408,11 @@ document.addEventListener('click', async event => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   const action = button.dataset.action;
+  if (action === 'retry-catalog') {
+    event.preventDefault(); event.stopImmediatePropagation();
+    await loadLiveData();
+    return;
+  }
   if (['select-owned', 'remove-owned', 'toggle-owned'].includes(action)) {
     event.preventDefault(); event.stopImmediatePropagation();
     const id = button.dataset.id;
@@ -381,7 +432,7 @@ document.addEventListener('click', async event => {
   }
   if (button.dataset.action === 'save') {
     const id = button.dataset.id;
-    const key = id.startsWith('report-') ? `report:${id.slice(7)}` : `demo:${id}`;
+    const key = productKey(id);
     const wasSaved = state.saved.has(id);
     try { await request(`/v1/me/saved/${key}`, {method:wasSaved ? 'DELETE' : 'PUT'}); }
     catch (error) { toast(`Favorite could not sync: ${message(error)}`); }
@@ -410,5 +461,5 @@ document.addEventListener('submit', event => {
   startAnalysis(data);
 }, true);
 
-loadLiveData();
+if (location.protocol !== 'file:') loadLiveData();
 modal.addEventListener('close', () => { state.faceFile = null; });

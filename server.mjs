@@ -17,7 +17,7 @@ createServer(async (request, response) => {
     let content = await readFile(join(root, file));
     if (file === 'index.html') {
       const safeUrl = JSON.stringify(apiUrl).replace(/</g, '\\u003c');
-      content = Buffer.from(content.toString().replace('<script src="app.js" defer></script>', `<script>window.SKIMPLE_API_URL=${safeUrl}</script>\n    <script src="app.js" defer></script>\n    <script src="live.js" defer></script>`));
+      content = Buffer.from(content.toString().replace('<script src="live.js" defer></script>', `<script>window.SKIMPLE_API_URL=${safeUrl}</script>\n    <script src="live.js" defer></script>`));
     }
     response.writeHead(200, {'Content-Type':types[extname(file)],'Cache-Control':'no-store'});
     response.end(content);

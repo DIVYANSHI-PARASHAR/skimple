@@ -14,12 +14,14 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_image_ttl_hours: int = 24
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.8-flash"
     nimble_api_key: str = ""
     openalex_api_key: str = ""
     pubmed_api_key: str = ""
     sentry_dsn: str = ""
-    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+    allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+    )
     review_allowed_domains: str = ""
     enable_face_photo: bool = False
 

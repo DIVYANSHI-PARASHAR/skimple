@@ -1,0 +1,733 @@
+{
+  "version": 1,
+  "retrieved_on": "2026-10-11",
+  "method": "skimple.research.search_pubmed / fetch_pubmed / enrich_openalex; additional primary studies selected through source review",
+  "searches": [
+    {
+      "ingredient": "Niacinamide",
+      "limit": 2,
+      "pmids": [
+        "24993939",
+        "38722460"
+      ]
+    },
+    {
+      "ingredient": "Glycerin",
+      "limit": 2,
+      "pmids": [
+        "29737895",
+        "31840548"
+      ]
+    },
+    {
+      "ingredient": "Panthenol",
+      "limit": 2,
+      "pmids": [
+        "34813665",
+        "19695474"
+      ]
+    },
+    {
+      "ingredient": "Ceramide NP",
+      "limit": 2,
+      "pmids": [
+        "40682399",
+        "38140026"
+      ]
+    },
+    {
+      "ingredient": "Hyaluronic Acid",
+      "limit": 2,
+      "pmids": [
+        "38481069",
+        "31036793"
+      ]
+    },
+    {
+      "ingredient": "Salicylic Acid",
+      "limit": 2,
+      "pmids": [
+        "40233838",
+        "17298101"
+      ]
+    },
+    {
+      "ingredient": "Squalane",
+      "limit": 2,
+      "pmids": [
+        "22361190",
+        "35994992"
+      ]
+    }
+  ],
+  "papers": [
+    {
+      "pmid": "16766489",
+      "doi": "10.1080/14764170600717704",
+      "title": "The effect of 2% niacinamide on facial sebum production.",
+      "abstract": "The presence of sebum on the face is responsible for both facial shine and the formation of comedonal and inflammatory acne lesions. Sebum control is a goal of many OTC skin care products; however, most currently available products function by absorbing sebum from the face rather than modulating its production.To demonstrate the effect of topical 2% niacinamide on sebum excretion rates and casual sebum production in Oriental and Caucasian populations.Separate clinical trials were conducted in both Japan and the USA to evaluate the effect of topical 2% niacinamide in different ethnic groups. A total of 100 Japanese subjects were enrolled in a double-blind, placebo-controlled comparison between two independent balanced groups. Fifty subjects applied the 2% niacinamide moisturizer to the face for 4 weeks and 50 subjects used a placebo moisturizer for 4 weeks, with sebum excretion rate (SER) measurements taken at baseline, week 2, and week 4. In addition, 30 Caucasian subjects were enrolled in a randomized split-face study for 6 weeks with SER and casual sebum levels (CSL) measured at baseline, week 3, and week 6.The results of the Japanese study demonstrated that the SER of the two groups was not significantly different at baseline, but the 2% niacinamide treated group demonstrated significantly lowered SER after 2 and 4 weeks of application. The results were somewhat different in the Caucasian study. After 6 weeks of treatment, the CSL was significantly reduced, but the SER was not significantly reduced.Topical 2% niacinamide may be effective in lowering the SER in Japanese individuals and CSL in Caucasian individuals.",
+      "year": 2006,
+      "journal": "Journal of cosmetic and laser therapy : official publication of the European Society for Laser Dermatology",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/16766489/",
+      "is_retracted": false,
+      "authors": [
+        "Zoe Diana Draelos",
+        "Akira Matsubara",
+        "Kenneth Smiles"
+      ],
+      "ingredients": [
+        "Niacinamide"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W2150614313",
+        "cited_by_count": 115,
+        "fwci": 2.8178,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Niacinamide",
+          "study": {
+            "outcome": "Reduction in sebum excretion rate and casual sebum levels",
+            "route": "topical",
+            "design": "double-blind, placebo-controlled and randomized split-face clinical trials",
+            "population": "Japanese and Caucasian individuals",
+            "concentration": "2%",
+            "sample_size": 130,
+            "effect_direction": "mixed",
+            "limitations": [
+              "Separate cohorts: 100 Japanese participants and 30 Caucasian participants; not one pooled trial",
+              "SER improved in the Japanese cohort; CSL improved but SER did not significantly improve in the Caucasian cohort",
+              "The tested 2% moisturizers are not the catalog 10% serum",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Niacinamide",
+            "field": "effect_direction",
+            "provider_value": "positive",
+            "source_checked_value": "mixed"
+          },
+          {
+            "ingredient": "Niacinamide",
+            "field": "limitations",
+            "provider_value": [
+              "results differed between Japanese and Caucasian populations",
+              "SER not significantly reduced in Caucasian subjects",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "Separate cohorts: 100 Japanese participants and 30 Caucasian participants; not one pooled trial",
+              "SER improved in the Japanese cohort; CSL improved but SER did not significantly improve in the Caucasian cohort",
+              "The tested 2% moisturizers are not the catalog 10% serum",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "12100180",
+      "doi": "10.1046/j.1365-2133.2002.04834.x",
+      "title": "The effect of niacinamide on reducing cutaneous pigmentation and suppression of melanosome transfer.",
+      "abstract": "Cutaneous hyperpigmentation occurs in multiple conditions. In addition, many Asian women desire a lighter skin colour. Thus, there is a need for the development of skin lightening agents. Niacinamide is a possible candidate.To investigate the effects of niacinamide on melanogenesis in vitro and on facial hyperpigmentation and skin colour in vivo in Japanese women.Melanin production was measured in a purified mushroom tyrosinase assay, cultured melanocytes, a keratinocyte/melanocyte coculture model, and a pigmented reconstructed epidermis (PREP) model. The clinical trials included 18 subjects with hyperpigmentation who used 5% niacinamide moisturizer and vehicle moisturizer in a paired design, and 120 subjects with facial tanning who were assigned to two of three treatments: vehicle, sunscreen and 2% niacinamide + sunscreen. Changes in facial hyperpigmentation and skin colour were objectively quantified by computer analysis and visual grading of high-resolution digital images of the face.Niacinamide had no effect on the catalytic activity of mushroom tyrosinase or on melanogenesis in cultured melanocytes. However, niacinamide gave 35-68% inhibition of melanosome transfer in the coculture model and reduced cutaneous pigmentation in the PREP model. In the clinical studies, niacinamide significantly decreased hyperpigmentation and increased skin lightness compared with vehicle alone after 4 weeks of use.The data suggest niacinamide is an effective skin lightening compound that works by inhibiting melanosome transfer from melanocytes to keratinocytes.",
+      "year": 2002,
+      "journal": "The British journal of dermatology",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/12100180/",
+      "is_retracted": false,
+      "authors": [
+        "T Hakozaki",
+        "L Minwalla",
+        "J Zhuang",
+        "M Chhoa",
+        "A Matsubara",
+        "K Miyamoto",
+        "A Greatens",
+        "G G Hillebrand",
+        "D L Bissett",
+        "R E Boissy"
+      ],
+      "ingredients": [
+        "Niacinamide"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W2095289520",
+        "cited_by_count": 487,
+        "fwci": 1.7225,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Niacinamide",
+          "study": {
+            "outcome": "Reduction in cutaneous hyperpigmentation and increase in skin lightness",
+            "route": "topical",
+            "design": "Paired clinical comparison and three-treatment clinical comparison",
+            "population": "Japanese women",
+            "concentration": "2% and 5%",
+            "sample_size": 138,
+            "effect_direction": "positive",
+            "limitations": [
+              "18 participants in the 5% hyperpigmentation study; 120 in the 2% tanning study",
+              "The 2% niacinamide comparison included sunscreen co-treatment",
+              "Randomization and funding are not stated in the abstract",
+              "These study formulations are not the catalog 10% serum",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Niacinamide",
+            "field": "design",
+            "provider_value": "randomized controlled clinical trial",
+            "source_checked_value": "Paired clinical comparison and three-treatment clinical comparison"
+          },
+          {
+            "ingredient": "Niacinamide",
+            "field": "limitations",
+            "provider_value": [
+              "Small sample size in the hyperpigmentation study",
+              "Potential industry funding bias not specified but commonly associated with such product trials",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "18 participants in the 5% hyperpigmentation study; 120 in the 2% tanning study",
+              "The 2% niacinamide comparison included sunscreen co-treatment",
+              "Randomization and funding are not stated in the abstract",
+              "These study formulations are not the catalog 10% serum",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "18025807",
+      "doi": "10.1159/000111134",
+      "title": "Placebo-controlled, double-blind, randomized, prospective study of a glycerol-based emollient on eczematous skin in atopic dermatitis: biophysical and clinical evaluation.",
+      "abstract": "Atopic dermatitis (AD) is a frequent, chronic inflammatory disease influenced by local, immunological, genetic and environmental factors. Important symptoms of AD are dry skin, intense pruritus and impaired epidermal barrier function. The therapeutic management of AD is difficult and needs individualized concepts. Moisturizing creams and emollients are useful and important treatment adjuncts for the daily skin care of patients with dry and inflamed skin, e.g. AD. Glycerol is known to increase stratum corneum (SC) hydration, improve epidermal barrier function and decrease clinical signs of inflammation. However, no controlled study on the efficacy of glycerol on barrier function and SC hydration in AD has been published. In the present study, a topical 20% glycerol preparation was compared with its vehicle in patients with AD. The aim of the present study was to evaluate the effect of a single emollient ingredient in AD within the full frame of a phase III drug study.24 patients with AD were treated for 4 weeks twice daily with a glycerol-based emollient in a randomized, double-blind study. Transepidermal water loss, skin capacitance, erythema and skin surface pH were assessed with biophysical, non-invasive instruments. The SCORAD and a local severity score were evaluated. After a wash-out period of 2 weeks, these parameters were assessed in order to quantify the sustained effect of this treatment.SC hydration was significantly improved, and epidermal barrier function was restored under treatment with glycerol-containing cream compared to the glycerol-free placebo. No significant differences were detectable for erythema values, SCORAD and local severity between the glycerol-containing cream and placebo. However, an improvement over time was detectable in the assessed parameters in both groups indicating the importance of emollient treatment in AD.Glycerol-based emollients have a positive influence on the skin of patients with AD. They enhance the SC hydration. Furthermore, it was possible to evaluate skin care products with a protocol design for efficacy studies of fully registered drugs in a placebo-controlled study.(c) 2007 S. Karger AG, Basel",
+      "year": 2008,
+      "journal": "Skin pharmacology and physiology",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/18025807/",
+      "is_retracted": false,
+      "authors": [
+        "M Breternitz",
+        "D Kowatzki",
+        "M Langenauer",
+        "P Elsner",
+        "J W Fluhr"
+      ],
+      "ingredients": [
+        "Glycerin"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W1997715398",
+        "cited_by_count": 122,
+        "fwci": 5.8851,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Glycerin",
+          "study": {
+            "outcome": "Improved stratum corneum hydration and restored epidermal barrier function",
+            "route": "topical",
+            "design": "randomized, double-blind, placebo-controlled study",
+            "population": "patients with atopic dermatitis",
+            "concentration": "20%",
+            "sample_size": 24,
+            "effect_direction": "positive",
+            "limitations": [
+              "No significant differences in erythema, SCORAD, or local severity compared to placebo",
+              "Improvement observed in both treatment and placebo groups over time",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": []
+      }
+    },
+    {
+      "pmid": "10965426",
+      "doi": "10.1055/s-0031-1300268",
+      "title": "Effect of topically applied dexpanthenol on epidermal barrier function and stratum corneum hydration. Results of a human in vivo study.",
+      "abstract": "In a randomized, double-blind, placebo-controlled study the effect of topical dexpanthenol (CAS 81-13-0) formulated in two different lipophilic vehicles on epidermal barrier function in vivo was carried out. Seven days' treatment with dexpanthenol improved stratum corneum hydration and reduced transepidermal water loss. Active treatment was statistically different from the vehicle control on both measures. Our results suggest that topical dexpanthenol formulated in either lipophilic vehicle stabilizes the skin barrier function.",
+      "year": 2000,
+      "journal": "Arzneimittel-Forschung",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/10965426/",
+      "is_retracted": false,
+      "authors": [
+        "W Gehring",
+        "M Gloor"
+      ],
+      "ingredients": [
+        "Panthenol"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W10915186",
+        "cited_by_count": 81,
+        "fwci": 2.1562,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Panthenol",
+          "study": {
+            "outcome": "Improved stratum corneum hydration and reduced transepidermal water loss",
+            "route": "topical",
+            "design": "randomized, double-blind, placebo-controlled study",
+            "population": "unknown",
+            "concentration": null,
+            "sample_size": null,
+            "effect_direction": "positive",
+            "limitations": [
+              "Seven-day study in two lipophilic vehicles",
+              "Population, sample size and concentration are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": false
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Panthenol",
+            "field": "population",
+            "provider_value": "human skin",
+            "source_checked_value": "unknown"
+          },
+          {
+            "ingredient": "Panthenol",
+            "field": "concentration",
+            "provider_value": "unknown",
+            "source_checked_value": null
+          },
+          {
+            "ingredient": "Panthenol",
+            "field": "topical_human_relevance",
+            "provider_value": true,
+            "source_checked_value": false
+          },
+          {
+            "ingredient": "Panthenol",
+            "field": "limitations",
+            "provider_value": [
+              "Used lipophilic vehicles",
+              "Sample size not specified",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "Seven-day study in two lipophilic vehicles",
+              "Population, sample size and concentration are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "31585489",
+      "doi": "10.1111/dth.13090",
+      "title": "The 24-hr, 28-day, and 7-day post-moisturizing efficacy of ceramides 1, 3, 6-II containing moisturizing cream compared with hydrophilic cream on skin dryness and barrier disruption in senile xerosis treatment.",
+      "abstract": "Direct replacement of decreased ceramides in the stratum corneum can be efficacious for skin hydration, skin barrier function, and skin pH. Our study aimed to evaluate the 24-hr, 28-day, and 7-day post-moisturizing efficacy of ceramide-containing moisturizer in senile xerosis treatment. A split site, double-blinded, randomized, controlled study was conducted in 24 senile subjects (91.7% females, mean age 54.83 \u00b1 5.45 years) with mild to moderate xerosis, who were randomized to receive ceramide-containing moisturizer or hydrophilic cream, daily applied on each side of the shin. A single application of ceramide-containing moisturizer increased skin hydration, while improving transepidermal water loss (TEWL) and skin pH for up to 24 hr, with statistically significant difference. After 28 days of twice-daily application, more significant improvement on skin hydration, barrier function, and skin pH was observed in those with ceramide-containing moisturizer at all-time points. At day 28, there was a statistically significant decrease of hemoglobin index, wrinkle, and texture on the ceramide treated side. The 7-day post-moisturizing efficacy on the ceramide treated side was superior for skin hydration, TEWL, skin pH, and wrinkle. Thus, the ceramide-containing moisturizer can be a novel promising treatment for senile xerosis.\u00a9 2019 Wiley Periodicals, Inc.",
+      "year": 2019,
+      "journal": "Dermatologic therapy",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/31585489/",
+      "is_retracted": false,
+      "authors": [
+        "Suparuj Lueangarun",
+        "Piyanuch Tragulplaingam",
+        "Supanee Sugkraroek",
+        "Therdpong Tempark"
+      ],
+      "ingredients": [
+        "Ceramide NP"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W2977704312",
+        "cited_by_count": 40,
+        "fwci": 3.6872,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Ceramide NP",
+          "study": {
+            "outcome": "Improved skin hydration, TEWL, skin pH, barrier function, hemoglobin index, wrinkles, and texture",
+            "route": "topical",
+            "design": "split site, double-blinded, randomized, controlled study",
+            "population": "24 senile subjects with mild to moderate xerosis",
+            "concentration": null,
+            "sample_size": 24,
+            "effect_direction": "positive",
+            "limitations": [
+              "24 subjects with mild to moderate xerosis; treatment applied to shins",
+              "A ceramide-containing moisturizer was tested; effects cannot be isolated to Ceramide NP",
+              "Specific ceramide identities and concentrations are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Ceramide NP",
+            "field": "limitations",
+            "provider_value": [
+              "small sample size",
+              "specific to senile xerosis population",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "24 subjects with mild to moderate xerosis; treatment applied to shins",
+              "A ceramide-containing moisturizer was tested; effects cannot be isolated to Ceramide NP",
+              "Specific ceramide identities and concentrations are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "33984185",
+      "doi": "10.1111/dth.14970",
+      "title": "A daily regimen of a ceramide-dominant moisturizing cream and cleanser restores the skin permeability barrier in adults with moderate eczema: A randomized trial.",
+      "abstract": "The dysfunctional skin barrier in eczema patients may be attributed to decreased levels of ceramides in the stratum corneum. The aim of this study was to determine whether a two-part system consisting of a ceramide-dominant physiological lipid-based moisturizing cream and cleanser could ameliorate the signs and symptoms of moderate eczema in adults over 28 days compared to placebo. Assessments were conducted at baseline and every 7 days thereafter. Eczema area severity index score decreased significantly across all time points in both groups compared to baseline (P < .0001), however, this decrease was not significant between groups at day 28 (P = .7804). In contrast, transepidermal water loss and skin hydration significantly improved over time in the active group, while it either stayed the same or worsened in the placebo group (P = .0342 and P < .0001, respectively). There was no difference in the use of mometasone furoate as rescue medication over time between groups (P = .1579). Dermatology life quality index scores improved significantly in both groups (P < .0001), with no difference between groups (P = .5256). However, patient satisfaction was greater in the active compared to the placebo group for several parameters including relief of itch, dry skin, skin softness and smoothness (all P < .05). No patients withdrew from the study due to adverse events (AEs) and there were no serious AEs. The ceramide-dominant moisturizing cream and cleanser safely restores skin permeability and improves the signs and symptoms of eczema in adults.\u00a9 2021 Ego Pharmaceuticals Pty Ltd. Dermatologic Therapy published by Wiley Periodicals LLC.",
+      "year": 2021,
+      "journal": "Dermatologic therapy",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/33984185/",
+      "is_retracted": false,
+      "authors": [
+        "Fabrizio Spada",
+        "Ian P Harrison",
+        "Tanya M Barnes",
+        "Kerryn A Greive",
+        "Daisy Daniels",
+        "Joshua P Townley",
+        "Niyaz Mostafa",
+        "Andrew T Fong",
+        "Philip L Tong",
+        "Stephen Shumack"
+      ],
+      "ingredients": [
+        "Ceramide NP"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W3160895770",
+        "cited_by_count": 43,
+        "fwci": 4.4505,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Ceramide NP",
+          "study": {
+            "outcome": "Improvement in skin hydration and transepidermal water loss in adults with moderate eczema",
+            "route": "topical",
+            "design": "Placebo-controlled clinical comparison",
+            "population": "adults with moderate eczema",
+            "concentration": null,
+            "sample_size": null,
+            "effect_direction": "positive",
+            "limitations": [
+              "A combined cream and cleanser regimen was tested; effects cannot be isolated to Ceramide NP",
+              "No significant between-group eczema-severity difference at day 28",
+              "No between-group difference in rescue medication use or quality-of-life scores",
+              "Sample size, randomization and specific ceramide concentrations are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Ceramide NP",
+            "field": "design",
+            "provider_value": "randomized controlled trial",
+            "source_checked_value": "Placebo-controlled clinical comparison"
+          },
+          {
+            "ingredient": "Ceramide NP",
+            "field": "limitations",
+            "provider_value": [
+              "no significant difference between groups in Eczema Area Severity Index at day 28",
+              "no difference in rescue medication use between groups",
+              "no difference in Dermatology Life Quality Index between groups",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "A combined cream and cleanser regimen was tested; effects cannot be isolated to Ceramide NP",
+              "No significant between-group eczema-severity difference at day 28",
+              "No between-group difference in rescue medication use or quality-of-life scores",
+              "Sample size, randomization and specific ceramide concentrations are not stated in the abstract",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "22052267",
+      "doi": null,
+      "title": "Efficacy of cream-based novel formulations of hyaluronic acid of different molecular weights in anti-wrinkle treatment.",
+      "abstract": "Due to its strong water-binding potential, hyaluronic acid (HA) is a well-known active ingredient for cosmetic applications. Native HA is proposed to help the skin to retain and maintain elasticity, turgor and moisture.To observe the efficacy of topical application of 0.1% hyaluronan formulations of different molecular weights (MW) (50, 130, 300, 800 and 2000 kDa, respectively) in the periocular area as anti-wrinkle treatment.Seventy-six female subjects between 30 and 60 years of age with clinical signs of periocular wrinkles applied one of the formulations twice-daily to the area of interest in a randomized fashion for 60 days. Around the other eye, a vehicle control cream was applied. Measurements of skin hydration and skin elasticity were performed before treatment, 30 and 60 days thereafter. At similar time points negative replicas were taken and evaluated by semi-automated morphometry.All HA-based creams utilized in this study demonstrated a significant improvement in skin hydration and overall elasticity values (R2) when compared to placebo. Measurements of wrinkle depth using mean roughness (Ra) and maximum roughness (Rz) values revealed significant improvement in the 130 and the 50 kDa HA group after 60 days of treatment compared to placebo-treated area.Topical application of all 0.1% HA formulations used in this study led to significant improvement in skin hydration and elasticity. Application of low-molecular-weight (LMW) HA was associated with significant reduction of wrinkle depth, which may be due to better penetration abilities of LMW HA.",
+      "year": 2011,
+      "journal": "Journal of drugs in dermatology : JDD",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/22052267/",
+      "is_retracted": false,
+      "authors": [
+        "Tatjana Pavicic",
+        "Gerd G Gauglitz",
+        "Peter Lersch",
+        "Khadija Schwach-Abdellaoui",
+        "Birgitte Malle",
+        "Hans Christian Korting",
+        "Mike Farwick"
+      ],
+      "ingredients": [
+        "Hyaluronic Acid"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {},
+      "openalex_status": "no_match",
+      "findings": [
+        {
+          "ingredient": "Hyaluronic Acid",
+          "study": {
+            "outcome": "Improvement in skin hydration, elasticity, and reduction of periocular wrinkle depth",
+            "route": "topical",
+            "design": "Randomized placebo-controlled study",
+            "population": "76 female subjects aged 30-60 with periocular wrinkles",
+            "concentration": "0.1%",
+            "sample_size": 76,
+            "effect_direction": "positive",
+            "limitations": [
+              "Wrinkle depth improvement only significant for 130 and 50 kDa molecular weight formulations",
+              "Study limited to periocular area",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": []
+      }
+    },
+    {
+      "pmid": "1535287",
+      "doi": null,
+      "title": "Treatment of acne vulgaris with salicylic acid pads.",
+      "abstract": "Most cases of acne vulgaris are either mild or moderate in severity and well-suited for treatment with nonprescription agents that are safe, effective, and convenient to use. A review of four clinical studies and a comedolytic assay attests to the efficacy and safety of 0.5% and 2% solutions of salicylic acid for the treatment of acne vulgaris. In three placebo-controlled studies and a comedolytic assay, salicylic acid pads reduced the number of primary lesions and thereby the number and severity of all lesions associated with acne. Comparative studies of salicylic acid have shown it to be superior to benzoyl peroxide in reducing the total number of acne lesions. Adverse reactions to salicylic acid are generally limited to mild, local irritation occurring in a minority of patients.",
+      "year": 1992,
+      "journal": "Clinical therapeutics",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/1535287/",
+      "is_retracted": false,
+      "authors": [
+        "E Zander",
+        "S Weisman"
+      ],
+      "ingredients": [
+        "Salicylic Acid"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {},
+      "openalex_status": "no_match",
+      "findings": [
+        {
+          "ingredient": "Salicylic Acid",
+          "study": {
+            "outcome": "Reduction in number and severity of acne lesions",
+            "route": "topical",
+            "design": "Clinical studies and comedolytic assay review",
+            "population": "patients with acne vulgaris",
+            "concentration": "0.5% and 2%",
+            "sample_size": null,
+            "effect_direction": "positive",
+            "limitations": [
+              "Review of four clinical studies and a comedolytic assay, rather than a single new trial",
+              "Sample sizes are not stated in the abstract",
+              "Mild local irritation was reported in a minority of patients",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Salicylic Acid",
+            "field": "limitations",
+            "provider_value": [
+              "Adverse reactions include mild local irritation",
+              "Small number of studies reviewed",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "Review of four clinical studies and a comedolytic assay, rather than a single new trial",
+              "Sample sizes are not stated in the abstract",
+              "Mild local irritation was reported in a minority of patients",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "pmid": "32356369",
+      "doi": "10.1002/14651858.CD011368.pub2",
+      "title": "Topical azelaic acid, salicylic acid, nicotinamide, sulphur, zinc and fruit acid (alpha-hydroxy acid) for acne.",
+      "abstract": "Acne is an inflammatory disorder with a high global burden. It is common in adolescents and primarily affects sebaceous gland-rich areas. The clinical benefit of the topical acne treatments azelaic acid, salicylic acid, nicotinamide, sulphur, zinc, and alpha-hydroxy acid is unclear.To assess the effects of topical treatments (azelaic acid, salicylic acid, nicotinamide, zinc, alpha-hydroxy acid, and sulphur) for acne.We searched the following databases up to May 2019: the Cochrane Skin Group Specialised Register, CENTRAL, MEDLINE, Embase, and LILACS. We also searched five trials registers.Clinical randomised controlled trials of the six topical treatments compared with other topical treatments, placebo, or no treatment in people with acne.We used standard methodological procedures expected by Cochrane. Key outcomes included participants' global self-assessment of acne improvement (PGA), withdrawal for any reason, minor adverse events (assessed as total number of participants who experienced at least one minor adverse event), and quality of life.We included 49 trials (3880 reported participants) set in clinics, hospitals, research centres, and university settings in Europe, Asia, and the USA. The vast majority of participants had mild to moderate acne, were aged between 12 to 30 years (range: 10 to 45 years), and were female. Treatment lasted over eight weeks in 59% of the studies. Study duration ranged from three months to three years. We assessed 26 studies as being at high risk of bias in at least one domain, but most domains were at low or unclear risk of bias. We grouped outcome assessment into short-term (less than or equal to 4 weeks), medium-term (from 5 to 8 weeks), and long-term treatment (more than 8 weeks). The following results were measured at the end of treatment, which was mainly long-term for the PGA outcome and mixed length (medium-term mainly) for minor adverse events. Azelaic acid In terms of treatment response (PGA), azelaic acid is probably less effective than benzoyl peroxide (risk ratio (RR) 0.82, 95% confidence interval (CI) 0.72 to 0.95; 1 study, 351 participants), but there is probably little or no difference when comparing azelaic acid to tretinoin (RR 0.94, 95% CI 0.78 to 1.14; 1 study, 289 participants) (both moderate-quality evidence). There may be little or no difference in PGA when comparing azelaic acid to clindamycin (RR 1.13, 95% CI 0.92 to 1.38; 1 study, 229 participants; low-quality evidence), but we are uncertain whether there is a difference between azelaic acid and adapalene (1 study, 55 participants; very low-quality evidence). Low-quality evidence indicates there may be no differences in rates of withdrawal for any reason when comparing azelaic acid with benzoyl peroxide (RR 0.88, 95% CI 0.60 to 1.29; 1 study, 351 participants), clindamycin (RR 1.30, 95% CI 0.48 to 3.56; 2 studies, 329 participants), or tretinoin (RR 0.66, 95% CI 0.29 to 1.47; 2 studies, 309 participants), but we are uncertain whether there is a difference between azelaic acid and adapalene (1 study, 55 participants; very low-quality evidence). In terms of total minor adverse events, we are uncertain if there is a difference between azelaic acid compared to adapalene (1 study; 55 participants) or benzoyl peroxide (1 study, 30 participants) (both very low-quality evidence). There may be no difference when comparing azelaic acid to clindamycin (RR 1.50, 95% CI 0.67 to 3.35; 1 study, 100 participants; low-quality evidence). Total minor adverse events were not reported in the comparison of azelaic acid versus tretinoin, but individual application site reactions were reported, such as scaling. Salicylic acid For PGA, there may be little or no difference between salicylic acid and tretinoin (RR 1.00, 95% CI 0.92 to 1.09; 1 study, 46 participants; low-quality evidence); we are not certain whether there is a difference between salicylic acid and pyruvic acid (1 study, 86 participants; very low-quality evidence); and PGA was not measured in the comparison of salicylic acid versus benzoyl peroxide. There may be no difference between groups in withdrawals when comparing salicylic acid and pyruvic acid (RR 0.89, 95% CI 0.53 to 1.50; 1 study, 86 participants); when salicylic acid was compared to tretinoin, neither group had withdrawals (both based on low-quality evidence (2 studies, 74 participants)). We are uncertain whether there is a difference in withdrawals between salicylic acid and benzoyl peroxide (1 study, 41 participants; very low-quality evidence). For total minor adverse events, we are uncertain if there is any difference between salicylic acid and benzoyl peroxide (1 study, 41 participants) or tretinoin (2 studies, 74 participants) (both very low-quality evidence). This outcome was not reported for salicylic acid versus pyruvic acid, but individual application site reactions were reported, such as scaling and redness. Nicotinamide Four studies evaluated nicotinamide against clindamycin or erythromycin, but none measured PGA. Low-quality evidence showed there may be no difference in withdrawals between nicotinamide and clindamycin (RR 1.12, 95% CI 0.49 to 2.60; 3 studies, 216 participants) or erythromycin (RR 1.40, 95% CI 0.46 to 4.22; 1 study, 158 participants), or in total minor adverse events between nicotinamide and clindamycin (RR 1.20, 95% CI 0.73 to 1.99; 3 studies, 216 participants; low-quality evidence). Total minor adverse events were not reported in the nicotinamide versus erythromycin comparison. Alpha-hydroxy (fruit) acid There may be no difference in PGA when comparing glycolic acid peel to salicylic-mandelic acid peel (RR 1.06, 95% CI 0.88 to 1.26; 1 study, 40 participants; low-quality evidence), and we are uncertain if there is a difference in total minor adverse events due to very low-quality evidence (1 study, 44 participants). Neither group had withdrawals (2 studies, 84 participants; low-quality evidence).Compared to benzoyl peroxide, azelaic acid probably leads to a worse treatment response, measured using PGA. When compared to tretinoin, azelaic acid probably makes little or no difference to treatment response. For other comparisons and outcomes the quality of evidence was low or very low. Risk of bias and imprecision limit our confidence in the evidence. We encourage the comparison of more methodologically robust head-to-head trials against commonly used active drugs.Copyright \u00a9 2020 The Cochrane Collaboration. Published by John Wiley & Sons, Ltd.",
+      "year": 2020,
+      "journal": "The Cochrane database of systematic reviews",
+      "source_url": "https://pubmed.ncbi.nlm.nih.gov/32356369/",
+      "is_retracted": false,
+      "authors": [
+        "Haibo Liu",
+        "Haiyan Yu",
+        "Jun Xia",
+        "Ling Liu",
+        "Guan J Liu",
+        "Hong Sang",
+        "Frank Peinemann"
+      ],
+      "ingredients": [
+        "Salicylic Acid",
+        "Niacinamide"
+      ],
+      "retrieved_on": "2026-10-11",
+      "openalex": {
+        "openalex_id": "https://openalex.org/W3021341118",
+        "cited_by_count": 54,
+        "fwci": 4.8897,
+        "is_retracted": false
+      },
+      "openalex_status": "matched",
+      "findings": [
+        {
+          "ingredient": "Salicylic Acid",
+          "study": {
+            "outcome": "Participants' global self-assessment of acne improvement, withdrawal, and minor adverse events",
+            "route": "topical",
+            "design": "systematic review of clinical randomised controlled trials",
+            "population": "people with acne",
+            "concentration": null,
+            "sample_size": null,
+            "effect_direction": "uncertain",
+            "limitations": [
+              "low to very low-quality evidence",
+              "risk of bias",
+              "imprecision",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        },
+        {
+          "ingredient": "Niacinamide",
+          "study": {
+            "outcome": "withdrawal and minor adverse events",
+            "route": "topical",
+            "design": "systematic review of clinical randomised controlled trials",
+            "population": "people with acne",
+            "concentration": null,
+            "sample_size": 374,
+            "effect_direction": "uncertain",
+            "limitations": [
+              "Four trials compared nicotinamide with clindamycin or erythromycin; 374 participants across different comparisons",
+              "No trial measured participant global assessment",
+              "Low-quality evidence; absence of a clear difference does not establish equivalence",
+              "Total minor adverse events were not reported for the erythromycin comparison",
+              "Abstract only; full methods not assessed"
+            ],
+            "topical_human_relevance": true
+          }
+        }
+      ],
+      "extractor_model_version": "gemini-3.1-flash-lite",
+      "source_check": {
+        "method": "codex-abstract-source-check-v1",
+        "scope": "Machine check of extraction consistency with the verified abstract; not scientific review or approval",
+        "corrections": [
+          {
+            "ingredient": "Niacinamide",
+            "field": "effect_direction",
+            "provider_value": "none",
+            "source_checked_value": "uncertain"
+          },
+          {
+            "ingredient": "Niacinamide",
+            "field": "limitations",
+            "provider_value": [
+              "low-quality evidence",
+              "did not measure PGA",
+              "total minor adverse events not reported in comparison with erythromycin",
+              "Abstract only; full methods not assessed"
+            ],
+            "source_checked_value": [
+              "Four trials compared nicotinamide with clindamycin or erythromycin; 374 participants across different comparisons",
+              "No trial measured participant global assessment",
+              "Low-quality evidence; absence of a clear difference does not establish equivalence",
+              "Total minor adverse events were not reported for the erythromycin comparison",
+              "Abstract only; full methods not assessed"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

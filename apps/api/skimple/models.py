@@ -60,14 +60,18 @@ class SkinProfile(Base):
 
 class SavedProduct(Base):
     __tablename__ = "saved_products"
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     product_key: Mapped[str] = mapped_column(String(120), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
 class OwnedProduct(Base):
     __tablename__ = "owned_products"
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
     product_key: Mapped[str] = mapped_column(String(120), primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -95,6 +99,7 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(255))
     category: Mapped[str | None] = mapped_column(String(100))
     barcode: Mapped[str | None] = mapped_column(String(80), index=True)
+    catalog_key: Mapped[str | None] = mapped_column(String(110), unique=True, index=True)
     __table_args__ = (UniqueConstraint("brand_id", "name", "barcode"),)
 
 
@@ -109,6 +114,7 @@ class ProductFormulation(Base):
     source: Mapped[str] = mapped_column(String(60), default="user_confirmed_packaging")
     verified_by: Mapped[str | None] = mapped_column(String(255))
     verification_url: Mapped[str | None] = mapped_column(String(500))
+    source_metadata: Mapped[dict] = mapped_column(JSON_TYPE, default=dict)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     __table_args__ = (UniqueConstraint("product_id", "variant", "region", "formula_hash"),)

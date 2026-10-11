@@ -19,6 +19,7 @@ from skimple.models import (
     ReviewSource,
     SkinPhotoAssessment,
 )
+from skimple.seeding import load_catalog, seed_catalog, seed_literature
 
 
 def approve_review_source(domain: str, notes: str) -> None:
@@ -98,6 +99,10 @@ def main() -> None:
     formula.add_argument("--source-url", required=True)
     seed = commands.add_parser("seed-ingredients")
     seed.add_argument("path", type=Path)
+    products = commands.add_parser("seed-products")
+    products.add_argument("path", type=Path)
+    products.add_argument("--literature", type=Path)
+    products.add_argument("--dry-run", action="store_true")
     commands.add_parser("purge-expired-media")
     args = parser.parse_args()
     if args.command == "approve-review-source":
@@ -106,6 +111,15 @@ def main() -> None:
         verify_formulation(args.formulation_id, args.reviewer, args.source_url)
     elif args.command == "seed-ingredients":
         print(seed_ingredients(args.path))
+    elif args.command == "seed-products":
+        bundle = load_catalog(args.path)
+        with SessionLocal.begin() as db:
+            result = seed_catalog(db, bundle)
+            if args.literature:
+                result.update(seed_literature(db, args.literature))
+            if args.dry_run:
+                db.rollback()
+            print(json.dumps({"dry_run": args.dry_run, **result}))
     else:
         print(purge_expired_media())
 

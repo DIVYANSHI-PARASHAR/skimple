@@ -42,9 +42,9 @@ class ProfileRequest(BaseModel):
     sensitivity: Literal["low", "medium", "high", "unsure"]
     known_reactions: list[str] = Field(default_factory=list, max_length=30)
     reported_sensitivities: list[str] = Field(default_factory=list, max_length=30)
-    goals: list[Literal["hydration", "blemishes", "tone", "barrier", "texture", "sun_protection", "other"]] = Field(
-        default_factory=list
-    )
+    goals: list[
+        Literal["hydration", "blemishes", "tone", "barrier", "texture", "sun_protection", "other"]
+    ] = Field(default_factory=list)
     routine: str = Field(default="", max_length=2000)
     notes: str = Field(default="", max_length=2000)
     photo_observations: str = Field(default="", max_length=1000)

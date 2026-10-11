@@ -149,20 +149,31 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     listed = client.get("/v1/me/reports", headers=visitor).json()["reports"]
     assert listed[0]["report_id"] == state["report_id"]
     assert listed[0]["product_name"] == "Daily Cream"
-    assert client.get("/v1/me/reports", headers={"X-Visitor-Key": "b" * 64}).json() == {"reports": []}
+    assert client.get("/v1/me/reports", headers={"X-Visitor-Key": "b" * 64}).json() == {
+        "reports": []
+    }
     saved_key = f"report:{state['report_id']}"
     assert client.put(f"/v1/me/saved/{saved_key}", headers=visitor).status_code == 200
     assert saved_key in client.get("/v1/me/saved", headers=visitor).json()["product_keys"]
-    assert client.put(f"/v1/me/saved/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code == 404
+    assert (
+        client.put(f"/v1/me/saved/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code
+        == 404
+    )
     assert client.get("/v1/me/owned", headers=visitor).json() == {"product_keys": []}
     assert client.put("/v1/me/owned/demo:byoma", headers=visitor).status_code == 200
     assert client.put(f"/v1/me/owned/{saved_key}", headers=visitor).status_code == 200
     assert client.put(f"/v1/me/owned/{saved_key}", headers=visitor).status_code == 200
     assert set(client.get("/v1/me/owned", headers=visitor).json()["product_keys"]) == {
-        "demo:byoma", saved_key
+        "demo:byoma",
+        saved_key,
     }
-    assert client.put(f"/v1/me/owned/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code == 404
-    assert client.get("/v1/me/owned", headers={"X-Visitor-Key": "b" * 64}).json() == {"product_keys": []}
+    assert (
+        client.put(f"/v1/me/owned/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code
+        == 404
+    )
+    assert client.get("/v1/me/owned", headers={"X-Visitor-Key": "b" * 64}).json() == {
+        "product_keys": []
+    }
     assert client.delete("/v1/me/owned/demo:byoma", headers=visitor).json() == {"owned": False}
     assert client.get("/v1/me/saved", headers=visitor).json()["product_keys"] == [saved_key]
     reply = client.post(
@@ -173,11 +184,14 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     assert reply.status_code == 200
     assert "no reviewed" in reply.json()["answer"].lower()
     assert "lightweight textures" in reply.json()["answer"]
-    assert client.post(
-        f"/v1/reports/{state['report_id']}/chat",
-        headers={"X-Visitor-Key": "b" * 64},
-        json={"question": "Tell me about it"},
-    ).status_code == 404
+    assert (
+        client.post(
+            f"/v1/reports/{state['report_id']}/chat",
+            headers={"X-Visitor-Key": "b" * 64},
+            json={"question": "Tell me about it"},
+        ).status_code
+        == 404
+    )
 
     def unavailable(*args):
         raise RuntimeError("Nimble temporarily unavailable")
