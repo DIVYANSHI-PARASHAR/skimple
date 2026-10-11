@@ -4,7 +4,7 @@ import { api } from "@/lib/api";
 
 type Observation = { feature: string; confidence: string; description: string };
 
-export function PhotoPilot({ token }: { token: string }) {
+export function PhotoPilot({ visitorKey }: { visitorKey: string }) {
   const [photo, setPhoto] = useState<File | null>(null);
   const [consent, setConsent] = useState(false);
   const [result, setResult] = useState<Observation[] | null>(null);
@@ -20,7 +20,7 @@ export function PhotoPilot({ token }: { token: string }) {
       form.append("consent", "true");
       const response = await api<{
         observations: { observations: Observation[] };
-      }>("/v1/me/skin-photo", token, { method: "POST", body: form });
+      }>("/v1/me/skin-photo", visitorKey, { method: "POST", body: form });
       setResult(response.observations.observations);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -32,7 +32,7 @@ export function PhotoPilot({ token }: { token: string }) {
     setBusy(true);
     setError("");
     try {
-      await api("/v1/me/skin-photo", token, { method: "DELETE" });
+      await api("/v1/me/skin-photo", visitorKey, { method: "DELETE" });
       setResult(null);
       setPhoto(null);
       setConsent(false);

@@ -82,7 +82,7 @@ def test_claim_requires_reviewed_verified_nonretracted_paper():
         found = build_report(db, formula.id, None)["ingredient_findings"]
         assert found[0]["papers"][0]["url"] == paper.source_url
         assert found[0]["papers"][0]["relation"] == "supports"
-        user = User(auth_subject="test:skin")
+        user = User(visitor_key_hash="a" * 64)
         db.add(user)
         db.flush()
         profile = SkinProfile(

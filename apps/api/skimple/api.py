@@ -7,7 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from skimple.auth import current_user
 from skimple.config import settings
 from skimple.db import get_db
 from skimple.ingredients import formula_hash, normalize_name
@@ -32,6 +31,7 @@ from skimple.models import (
 )
 from skimple.providers import observe_skin
 from skimple.schemas import AnalysisRequest, ConfirmRequest, FeedbackRequest, ProfileRequest
+from skimple.visitor import current_user
 
 log = logging.getLogger(__name__)
 
@@ -49,7 +49,7 @@ app.add_middleware(
     allow_origins=[x.strip() for x in settings().allowed_origins.split(",")],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type", "Idempotency-Key", "sentry-trace", "baggage"],
+    allow_headers=["X-Visitor-Key", "Content-Type", "Idempotency-Key", "sentry-trace", "baggage"],
     expose_headers=["sentry-trace", "baggage"],
 )
 

@@ -53,11 +53,11 @@ def upgrade():
     )
     op.create_table('users',
     sa.Column('id', sa.String(length=36), nullable=False),
-    sa.Column('auth_subject', sa.String(length=255), nullable=False),
+    sa.Column('visitor_key_hash', sa.String(length=64), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_index(op.f('ix_users_auth_subject'), 'users', ['auth_subject'], unique=True)
+    op.create_index(op.f('ix_users_visitor_key_hash'), 'users', ['visitor_key_hash'], unique=True)
     op.create_table('consents',
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('user_id', sa.String(length=36), nullable=False),
@@ -284,7 +284,7 @@ def downgrade():
     op.drop_table('ingredient_claims')
     op.drop_index(op.f('ix_consents_user_id'), table_name='consents')
     op.drop_table('consents')
-    op.drop_index(op.f('ix_users_auth_subject'), table_name='users')
+    op.drop_index(op.f('ix_users_visitor_key_hash'), table_name='users')
     op.drop_table('users')
     op.drop_table('review_sources')
     op.drop_table('papers')

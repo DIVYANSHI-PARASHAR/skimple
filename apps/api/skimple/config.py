@@ -13,9 +13,6 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_region: str = "us-east-1"
     s3_image_ttl_hours: int = 24
-    oidc_issuer: str = ""
-    oidc_audience: str = ""
-    dev_auth_enabled: bool = False
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     nimble_api_key: str = ""

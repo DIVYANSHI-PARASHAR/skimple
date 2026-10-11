@@ -2,8 +2,8 @@
 
 ## Services
 
-- Frontend: Next.js on Vercel or the provided web container. For local development, the web app loads the root `.env`. For deployment, build with the `NEXT_PUBLIC_*` variables in `.env.example`; public variables are baked into the bundle. The OIDC client must use authorization code with PKCE and issue a JWT access token for `OIDC_AUDIENCE`.
-- API: deploy `infra/Dockerfile.python` with its default command. Set all non-public values from `.env.example` as secrets. Set `DEV_AUTH_ENABLED=false`.
+- Frontend: Next.js on Vercel or the provided web container. For local development, the web app loads the root `.env`. For deployment, build with the `NEXT_PUBLIC_*` variables in `.env.example`; public variables are baked into the bundle. The browser creates a random visitor key and keeps it in local storage, so there is no sign-in setup.
+- API: deploy `infra/Dockerfile.python` with its default command. Set all non-public values from `.env.example` as secrets. Requests include the anonymous `X-Visitor-Key` header to keep scans and reports separate between browsers.
 - Worker: deploy the same Python image with command `rq worker scans analyses --url "$REDIS_URL" --with-scheduler`. Run one or more independently of API traffic.
 - Database: use TigerData PostgreSQL. Run `alembic upgrade head` before a new API release. No analytics warehouse is required.
 - Media: create a private S3-compatible bucket with no public ACL, server-side encryption, and a lifecycle rule to delete `scans/` and `face/` objects after 24 hours (or the configured retention). CORS is unnecessary because uploads pass through the API. Run `python -m skimple.ops purge-expired-media` hourly to clear database references and provide a second deletion mechanism.
@@ -21,7 +21,7 @@ The local Compose file is development infrastructure. Its MinIO bucket must be c
 
 ## Privacy and quality gates
 
-- Product photos expire; face photos require separate consent and are disabled until the pilot evaluation passes. `DELETE /v1/me/skin-photo` removes retained face media; `DELETE /v1/me/data` removes the account's scans, profile, analyses, reports, feedback and media. Catalog formulations and de-identified scientific records are shared and retained.
+- Product photos expire; face photos require separate consent and are disabled until the pilot evaluation passes. `DELETE /v1/me/skin-photo` removes retained face media; `DELETE /v1/me/data` removes the current visitor's scans, profile, analyses, reports, feedback and media. Clearing browser storage also loses the visitor key, so the browser can no longer retrieve or delete that saved data. Catalog formulations and de-identified scientific records are shared and retained.
 - Sentry receives IDs, error categories and spans. Request bodies are disabled in the API SDK; never add prompts, photos, profile answers or review text to traces.
 - Run golden-set evaluations and specialist review before enabling a controlled beta. The repository has a test harness and a sample contract; it does not contain the representative product photos or expert labels needed to claim the accuracy targets in the plan.
 - Confirm third-party API quotas and review content-use terms. Provider failures leave an explicit limitation or actionable error. Do not replace missing research with generated citations.

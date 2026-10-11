@@ -446,12 +446,6 @@ a {
     transform: rotate(360deg);
   }
 }
-.auth-card {
-  max-width: 560px;
-}
-.auth-card p {
-  color: var(--muted);
-}
 .result-banner {
   background: #e8f0e8;
   border-radius: 13px;
