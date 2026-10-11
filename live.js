@@ -2,10 +2,14 @@
 'use strict';
 
 const apiBase = window.SKIMPLE_API_URL || 'http://localhost:8000';
-const original = {receiveUpload, productCard, renderScan, renderFace, renderQuestionnaire, renderProfileSummary, openChat, renderDetail, renderReportTab, renderConfirmation, startAnalysis, saveProfile, persistProfile, processFace, sendChat, showHow};
+const original = {receiveUpload, productCard, renderScan, renderFace, renderQuestionnaire, renderProfileSummary, openChat, renderDetail, renderReportTab, renderConfirmation, startAnalysis, saveProfile, persistProfile, processFace, sendChat, showHow, openProductLookup, renderLookupResults};
 let profileSync = Promise.resolve();
 let liveReady = false;
 let advancedProfile = {knownReactions:[], dryAreas:[], oilyAreas:[], daytimeOiliness:null, sensitivity:null, goals:[], routine:[]};
+let productSearchTimer;
+let productSearchVersion = 0;
+let ownedSearchTimer;
+let ownedSearchVersion = 0;
 
 function visitorKey() {
   const storageKey = 'skimple.visitor-key.v1';
@@ -144,6 +148,7 @@ receiveUpload = function(file, target) {
     state.faceFile = file;
   } else if (state.scan) {
     state.scan.error = null;
+    state.scan.selected = null;
     state.scan.files ||= {};
     state.scan.files[target] = file;
   }
@@ -152,6 +157,13 @@ receiveUpload = function(file, target) {
 
 renderScan = function() {
   original.renderScan();
+  const scan = state.scan;
+  if (scan?.selected) {
+    const results = $('#new-product-results', modal);
+    if (results) results.innerHTML = `<div class="selected-product">${scan.selected.image_url ? `<img src="${safeLink(scan.selected.image_url)}" alt=""/>` : '<span class="product-image-fallback">✧</span>'}<span><strong>${escapeHTML(scan.selected.title)}</strong><small>Selected product</small></span><button type="button" data-action="clear-product-selection" aria-label="Clear selected product">×</button></div>`;
+    const input = $('#new-product-search', modal);
+    if (input) input.value = scan.selected.title;
+  }
   if (state.scan?.error) {
     $('.upload-grid', modal)?.insertAdjacentHTML('beforebegin', `<p class="scan-error" role="alert">${escapeHTML(state.scan.error)}</p>`);
   }
@@ -192,21 +204,63 @@ openChat = function() {
 };
 
 function activeScan(scan) { return state.scan === scan && modal.open; }
+
+openProductLookup = function(query = '') {
+  original.openProductLookup(query);
+  const intro = $('.modal-inner .intro', modal);
+  if (intro) intro.textContent = 'Search your shelf and the web. Choose a match to add it or start a new report.';
+  const help = $('#lookup-help', modal);
+  if (help) help.textContent = 'Shelf matches appear first. Web matches include a product photo.';
+  const bottom = $('.lookup-bottom', modal);
+  if (bottom) bottom.innerHTML = '<p>Have the product in hand?</p><button class="text-button" data-action="lookup-scan">Use a front photo instead ↗</button>';
+  $('#product-options', modal)?.insertAdjacentHTML('afterend', '<div id="web-product-options" class="web-product-options" role="listbox" aria-label="Products found on the web"></div>');
+  if (query.trim().length >= 3) renderLookupResults(query);
+};
+
+renderLookupResults = function(query = '') {
+  original.renderLookupResults(query);
+  const shelfStatus = $('#lookup-status', modal);
+  if (shelfStatus) shelfStatus.textContent = shelfStatus.textContent.replace('example', 'shelf');
+  const empty = $('.lookup-empty', modal);
+  if (empty) empty.innerHTML = `<span aria-hidden="true">✧</span><h3>No shelf match yet.</h3><p>${query.trim().length >= 3 ? 'Checking the web for this product…' : 'Type a fuller name or add a front photo.'}</p>`;
+  const target = $('#web-product-options', modal);
+  if (!target) return;
+  clearTimeout(ownedSearchTimer);
+  const version = ++ownedSearchVersion;
+  state.ownedWebSuggestions = [];
+  if (query.trim().length < 3) { target.innerHTML = ''; return; }
+  target.innerHTML = '<p class="product-search-state" role="status">Searching the web for more products…</p>';
+  ownedSearchTimer = setTimeout(async () => {
+    try {
+      const response = await request(`/v1/products/search?q=${encodeURIComponent(query.trim())}`);
+      if (version !== ownedSearchVersion || !modal.open || $('#owned-search', modal)?.value.trim() !== query.trim()) return;
+      state.ownedWebSuggestions = list(response.products);
+      target.innerHTML = `<div class="web-results-label">Found on the web</div>${state.ownedWebSuggestions.length ? state.ownedWebSuggestions.map((product, index) => `<button type="button" role="option" class="product-search-option" data-owned-web-suggestion="${index}">${product.image_url ? `<img src="${safeLink(product.image_url)}" alt="" loading="lazy"/>` : '<span class="product-image-fallback">✧</span>'}<span>${escapeHTML(product.title)}</span></button>`).join('') : '<p class="product-search-state">No web matches yet. Try a fuller name or a front photo.</p>'}`;
+    } catch (error) {
+      if (version === ownedSearchVersion && modal.open && $('#owned-search', modal))
+        target.innerHTML = `<p class="product-search-state scan-error" role="alert">${escapeHTML(message(error))}</p>`;
+    }
+  }, 350);
+};
+
 async function waitForScan(scan) {
   for (let attempt = 0; attempt < 90; attempt++) {
     if (!activeScan(scan)) return null;
     const status = await request(`/v1/scans/${scan.id}`);
     const progress = $('#scan-progress-message', modal);
     if (progress) progress.textContent = {
-      CREATED:'Photos received. Starting label reading…',
-      EXTRACTING:'Reading the product and ingredient labels…',
-      IDENTIFYING:'Checking the product details…',
-      RETRYING:'The label reader is trying again…',
-    }[status.status] || 'Reading your label…';
+      CREATED:'Product received. Starting the lookup…',
+      EXTRACTING:'Identifying the product…',
+      IDENTIFYING:'Finding the exact ingredient list on the web…',
+      RETRYING:'The product lookup is trying again…',
+    }[status.status] || 'Looking up your product…';
     if (status.status === 'NEEDS_CONFIRMATION') return status;
-    if (status.status === 'FAILED') throw new Error(status.error_code === 'MODEL_UNAVAILABLE'
-      ? 'Label reading is temporarily unavailable. Please try again later.'
-      : 'We could not read the label right now. Please try again.');
+    if (status.status === 'FAILED') throw new Error({
+      MODEL_UNAVAILABLE:'Product recognition is temporarily unavailable. Please try again later.',
+      MODEL_BUSY:'Product lookup is busy right now. Please try again shortly.',
+      PRODUCT_IDENTITY_UNCLEAR:'We could not identify the exact product. Try searching by name or use a clearer front photo.',
+      INGREDIENTS_NOT_FOUND:'We could not verify a complete ingredient list for this exact product. Try another listing or product variant.',
+    }[status.error_code] || 'We could not look up this product right now. Please try again.');
     await pause(2000);
   }
   throw new Error('The label is taking longer than expected. Please try again shortly.');
@@ -216,21 +270,29 @@ extractProduct = async function() {
   const scan = state.scan;
   if (!scan) return;
   if (scan.demo) { original.renderConfirmation(); return; }
-  if (!scan.files?.front || !scan.files?.back) { toast('Please add both front and back photos.'); return; }
+  if (!scan.selected && !scan.files?.front) { toast('Choose a product match or add a front photo.'); return; }
   if (state.busy) return;
   state.busy = true;
   scan.error = null;
-  showModal(modalShell(`<div class="progress-view">${monster()}<div class="step-label" style="justify-content:center">Reading your label</div><h2 style="margin-top:12px">Meeting your new product…</h2><p>Reading the photos and checking the ingredient list.<br>You’ll confirm the details next.</p><div class="scan-progress current" role="status" aria-live="polite"><span class="progress-dot" aria-hidden="true"></span><span id="scan-progress-message">Uploading your photos…</span></div></div>`));
+  showModal(modalShell(`<div class="progress-view">${monster()}<div class="step-label" style="justify-content:center">Finding your product</div><h2 style="margin-top:12px">Meeting your new product…</h2><p>We’re finding the exact ingredients, then building your report.</p><div class="scan-progress current" role="status" aria-live="polite"><span class="progress-dot" aria-hidden="true"></span><span id="scan-progress-message">${scan.selected ? 'Sending your selection…' : 'Uploading your front photo…'}</span></div></div>`));
   try {
-    const body = new FormData();
-    body.append('front', scan.files.front);
-    body.append('back', scan.files.back);
-    const created = await request('/v1/scans', {method:'POST', headers:{'Idempotency-Key':idempotency()}, body});
+    let created;
+    if (scan.selected) {
+      created = await request('/v1/scans/from-search', {method:'POST', headers:{'Idempotency-Key':idempotency()}, body:JSON.stringify({title:scan.selected.title, source_url:scan.selected.source_url})});
+    } else {
+      const body = new FormData();
+      body.append('front', scan.files.front);
+      created = await request('/v1/scans', {method:'POST', headers:{'Idempotency-Key':idempotency()}, body});
+    }
     scan.id = created.scan_id;
     const result = await waitForScan(scan);
     if (result && activeScan(scan)) {
       scan.extraction = result.extraction;
-      renderConfirmation();
+      const x = result.extraction || {};
+      if (!x.brand || !x.product_name || !x.raw_ingredient_text || !list(x.ingredients_in_order).length) throw new Error('We could not verify this product’s ingredient list. Please try another match.');
+      state.busy = false;
+      await startAnalysis({brand:x.brand, name:x.product_name, inci:x.raw_ingredient_text,
+        ingredients:list(x.ingredients_in_order)});
     }
   } catch (error) {
     if (activeScan(scan)) { scan.error = message(error); renderScan(); }
@@ -268,7 +330,8 @@ startAnalysis = async function(data) {
   showModal(modalShell(`<div class="progress-view">${monster()}<div class="step-label" style="justify-content:center">A little digging · 3 of 3</div><h2 style="margin-top:12px">Good things take a little curiosity.</h2><p>Unpacking the story of ${escapeHTML(data.name)}.</p><ol class="progress-list"><li class="current"><span class="progress-dot"></span>Getting to know the ingredients</li><li><span class="progress-dot"></span>Looking through the review themes</li><li><span class="progress-dot"></span>${state.profile?'Adding your skin context':'Putting the little pieces together'}</li></ol><div class="progress-track"><i id="analysis-progress"></i></div><p class="small-copy" style="margin-top:15px">Live analysis may take a minute. Evidence and review coverage vary.</p></div>`));
   try {
     await profileSync;
-    const names = data.inci.split(/[,;\n]+/).map(x => x.trim()).filter(Boolean);
+    const names = (data.ingredients?.length ? data.ingredients : data.inci.split(/[,;\n]+/))
+      .map(x => x.trim()).filter(Boolean);
     if (!names.length) throw new Error('Please enter a complete ingredient list.');
     await request(`/v1/scans/${scan.id}/confirm`, {method:'POST', body:JSON.stringify({
       brand:data.brand, product_name:data.name, variant:scan.extraction?.variant || '',
@@ -281,11 +344,15 @@ startAnalysis = async function(data) {
     const report = await request(`/v1/reports/${reportId}`);
     const p = reportProduct({report_id:reportId,brand:data.brand,product_name:data.name,category:inferredCategory(data.name),variant:scan.extraction?.variant || '',raw_ingredient_text:data.inci,result:report});
     state.products.push(p);
+    state.owned.add(p.id);
+    persistOwnedProducts();
+    try { await request(`/v1/me/owned/${productKey(p.id)}`, {method:'PUT'}); }
+    catch (error) { console.warn('Product shelf sync will retry:', message(error)); }
     closeModal();
     location.hash = `product/${p.id}`;
     toast('Your product report is ready.');
   } catch (error) {
-    if (activeScan(scan)) { renderConfirmation(data); toast(message(error)); }
+    if (activeScan(scan)) showModal(modalShell(`<div class="progress-view">${monster()}<h2>We couldn't finish the report.</h2><p class="scan-error" role="alert">${escapeHTML(message(error))}</p><p>Your product and ingredient list are saved here. You can try the analysis again.</p><div class="modal-actions"><button type="button" class="secondary" data-action="scan-back">Back to product</button><button type="button" class="primary" data-action="retry-product-analysis">Try again</button></div></div>`));
   } finally { state.busy = false; }
 };
 
@@ -367,15 +434,90 @@ sendChat = async function(question) {
 showHow = function() {
   original.showHow();
   const notice = $('.source-notice', modal);
-  if (notice) notice.textContent = 'The six illustrated shelf products are interactive examples. Scanned products use the live label, analysis, review, and research services; coverage varies by product.';
+  if (notice) notice.textContent = 'The six illustrated shelf products are interactive examples. Added products use live product lookup, ingredient, analysis, review, and research services; coverage varies by product.';
+  const findStep = $('.how-step:nth-child(1) p', modal);
+  if (findStep) findStep.textContent = 'Pick a product from the shelf, choose a web match by name, or add one front photo.';
+  const ingredientStep = $('.how-step:nth-child(2) p', modal);
+  if (ingredientStep) ingredientStep.textContent = 'We find a complete ingredient list for the exact product and variant, then build your report.';
   const photoStep = $('.how-step:nth-child(3) p', modal);
   if (photoStep) photoStep.textContent = 'Share skin preferences or, when available, consent to a face photo for visible observations. Photos expire.';
 };
+
+async function loadProductSuggestions(scan, query, version) {
+  const results = $('#new-product-results', modal);
+  if (results) results.innerHTML = '<p class="product-search-state" role="status">Searching for products…</p>';
+  try {
+    const response = await request(`/v1/products/search?q=${encodeURIComponent(query)}`);
+    if (!activeScan(scan) || version !== productSearchVersion || scan.searchQuery !== query) return;
+    scan.suggestions = list(response.products);
+    const target = $('#new-product-results', modal);
+    if (!target) return;
+    target.innerHTML = scan.suggestions.length ? scan.suggestions.map((product, index) => `<button type="button" role="option" class="product-search-option" data-product-suggestion="${index}">${product.image_url ? `<img src="${safeLink(product.image_url)}" alt="" loading="lazy"/>` : '<span class="product-image-fallback">✧</span>'}<span>${escapeHTML(product.title)}</span></button>`).join('') : '<p class="product-search-state">No matching products yet. Try a fuller name or add a front photo.</p>';
+    $('#new-product-search', modal)?.setAttribute('aria-expanded', String(Boolean(scan.suggestions.length)));
+  } catch (error) {
+    if (!activeScan(scan) || version !== productSearchVersion) return;
+    const target = $('#new-product-results', modal);
+    if (target) target.innerHTML = `<p class="product-search-state scan-error" role="alert">${escapeHTML(message(error))}</p>`;
+  }
+}
+
+document.addEventListener('input', event => {
+  if (event.target.id !== 'new-product-search' || !state.scan) return;
+  const scan = state.scan;
+  const query = event.target.value.trim();
+  scan.searchQuery = query;
+  scan.selected = null;
+  scan.suggestions = [];
+  const submit = $('[data-action="extract"]', modal);
+  if (submit) submit.disabled = !scan.files?.front;
+  const target = $('#new-product-results', modal);
+  if (target) target.innerHTML = query.length < 3 ? '<p class="product-search-state">Type at least three characters to see matches.</p>' : '';
+  event.target.setAttribute('aria-expanded', 'false');
+  clearTimeout(productSearchTimer);
+  const version = ++productSearchVersion;
+  if (query.length >= 3) productSearchTimer = setTimeout(() => loadProductSuggestions(scan, query, version), 350);
+}, true);
+
+document.addEventListener('click', event => {
+  const option = event.target.closest('[data-product-suggestion]');
+  const ownedOption = event.target.closest('[data-owned-web-suggestion]');
+  const clear = event.target.closest('[data-action="clear-product-selection"]');
+  if (!option && !ownedOption && !clear) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  if (ownedOption) {
+    const selected = state.ownedWebSuggestions?.[Number(ownedOption.dataset.ownedWebSuggestion)];
+    if (!selected) return;
+    state.scan = {front:null, back:null, demo:false, selected, searchQuery:selected.title};
+    renderScan();
+    return;
+  }
+  if (!state.scan) return;
+  if (clear) {
+    state.scan.selected = null;
+    state.scan.searchQuery = '';
+    renderScan();
+    $('#new-product-search', modal)?.focus();
+    return;
+  }
+  const selected = state.scan.suggestions?.[Number(option.dataset.productSuggestion)];
+  if (!selected) return;
+  clearTimeout(productSearchTimer);
+  productSearchVersion++;
+  state.scan.selected = selected;
+  state.scan.searchQuery = selected.title;
+  renderScan();
+}, true);
 
 document.addEventListener('click', async event => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   const action = button.dataset.action;
+  if (action === 'retry-product-analysis') {
+    event.preventDefault(); event.stopImmediatePropagation();
+    if (state.scan?.draft) startAnalysis(state.scan.draft);
+    return;
+  }
   if (['select-owned', 'remove-owned', 'toggle-owned'].includes(action)) {
     event.preventDefault(); event.stopImmediatePropagation();
     const id = button.dataset.id;

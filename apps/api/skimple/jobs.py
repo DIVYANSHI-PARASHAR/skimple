@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import sentry_sdk
-from google.genai.errors import ClientError
+from google.genai.errors import ClientError, ServerError
 from redis import Redis
 from rq import Queue, Retry, get_current_job
 from sqlalchemy import delete, select
@@ -28,10 +28,13 @@ from skimple.models import (
 from skimple.providers import (
     classify_review,
     extract_product,
+    identify_front_product,
+    lookup_product_ingredients,
     product_candidates,
     review_candidates,
     review_fingerprint,
 )
+from skimple.schemas import ProductIdentity
 from skimple.scoring import build_report
 
 log = logging.getLogger(__name__)
@@ -69,11 +72,33 @@ def _run_extraction(scan_id: str) -> None:
         scan.status = "EXTRACTING"
         db.commit()
         try:
-            with sentry_sdk.start_span(op="gemini.extract_product"):
-                extraction = extract_product(get_image(scan.front_key), get_image(scan.back_key))
+            if scan.back_key:
+                with sentry_sdk.start_span(op="gemini.extract_product"):
+                    extraction = extract_product(get_image(scan.front_key), get_image(scan.back_key))
+            else:
+                if scan.front_key:
+                    with sentry_sdk.start_span(op="gemini.identify_product"):
+                        identity = identify_front_product(get_image(scan.front_key))
+                    preferred_url = ""
+                else:
+                    selected = scan.extraction or {}
+                    preferred_url = str(selected.get("source_url") or "")
+                    identity = ProductIdentity(
+                        product_name=str(selected.get("selected_title") or "")
+                    )
+                scan.status = "IDENTIFYING"
+                db.commit()
+                with sentry_sdk.start_span(op="nimble.lookup_ingredients"):
+                    extraction, source_url = lookup_product_ingredients(identity, preferred_url)
+                scan.verification = {
+                    "ingredient_source_url": source_url,
+                    "note": "Ingredient list found on the web for this product and variant.",
+                }
             scan.extraction = extraction.model_dump()
-            scan.status = "IDENTIFYING"
+            scan.status = "IDENTIFYING" if scan.back_key else "NEEDS_CONFIRMATION"
             db.commit()
+            if not scan.back_key:
+                return
             with sentry_sdk.start_span(op="postgres.match_formulation"):
                 known_candidates = catalog_candidates(db, extraction)
             try:
@@ -97,10 +122,16 @@ def _run_extraction(scan_id: str) -> None:
             log.exception("Extraction failed for scan %s", scan_id)
             job = get_current_job()
             model_unavailable = isinstance(exc, ClientError) and exc.code == 404
-            scan.status = "RETRYING" if job and job.retries_left and not model_unavailable else "FAILED"
-            scan.error_code = "MODEL_UNAVAILABLE" if model_unavailable else "EXTRACTION_UNAVAILABLE"
+            model_busy = isinstance(exc, ServerError) and exc.code in {503, 504}
+            no_match = isinstance(exc, ValueError) and str(exc) in {
+                "PRODUCT_IDENTITY_UNCLEAR", "INGREDIENTS_NOT_FOUND"
+            }
+            scan.status = "RETRYING" if job and job.retries_left and not (model_unavailable or no_match) else "FAILED"
+            scan.error_code = ("MODEL_UNAVAILABLE" if model_unavailable else
+                               "MODEL_BUSY" if model_busy else str(exc) if no_match else
+                               "EXTRACTION_UNAVAILABLE")
             db.commit()
-            if job and not model_unavailable:
+            if job and not (model_unavailable or no_match):
                 raise
 
 

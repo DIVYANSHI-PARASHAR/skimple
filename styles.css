@@ -12,5 +12,24 @@ dialog{border:1px solid #e3e1d5;padding:0;width:560px;max-width:calc(100% - 28px
 .scan-progress{display:flex;align-items:center;justify-content:center;gap:10px;margin:24px auto 0;color:var(--ink);font-size:12px;font-weight:600}
 .scan-progress .progress-dot{flex:0 0 20px}
 .scan-error{margin:16px 0;padding:13px 15px;border-radius:12px;background:#f8e6d7;color:#8c3828;font-size:12px;line-height:1.6}
+.product-search-field{position:relative;margin:24px 0 10px}
+.product-search-field input{width:100%}
+.product-search-results{max-height:260px;overflow:auto;margin-top:8px;border-radius:16px;background:#fffdf8}
+.product-search-option,.selected-product{display:flex;align-items:center;gap:13px;width:100%;min-height:66px;padding:9px 12px;text-align:left;border:0;border-bottom:1px solid #e7e6db;background:#fffdf8;color:var(--ink);font:inherit}
+.product-search-option{cursor:pointer}
+.product-search-option:hover,.product-search-option:focus-visible{background:#edf0e5}
+.product-search-option img,.selected-product img,.product-image-fallback{width:48px;height:48px;flex:none;object-fit:contain;border-radius:9px;background:#f2f0e8}
+.product-image-fallback{display:grid;place-items:center;font-size:25px;color:#64775f}
+.product-search-option span:last-child,.selected-product strong{font-size:13px;line-height:1.35}
+.selected-product{border:1px solid #bdc9b2;border-radius:13px;background:#edf0e5}
+.selected-product span:nth-child(2){display:grid;gap:3px;flex:1}
+.selected-product small{color:#717a6b}
+.selected-product button{border:0;background:transparent;color:var(--ink);font-size:22px;cursor:pointer}
+.product-search-state{padding:12px 14px;font-size:12px;color:#6b7467}
+.scan-divider{text-align:center;color:#777d70;font-size:12px;margin:18px 0 10px}
+.single-upload{grid-template-columns:1fr}
+.single-upload .upload-zone{min-height:138px}
+.web-product-options{max-height:260px;overflow:auto;margin-top:13px;border-top:1px solid #e7e6db}
+.web-results-label{padding:12px 14px 5px;color:#727a6f;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
 @media(max-width:760px){.site-header nav>a{display:none}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
