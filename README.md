@@ -1,29 +1,24 @@
 # Skimple
 
-Mobile-first skincare product scanner. The implementation follows [the product plan](skincare_ai_implementation_plan.md) with a FastAPI API, Redis worker, PostgreSQL storage, and Next.js web app.
+Skimple combines the illustrated `ui` branch with the FastAPI, worker, and storage services from `main`. The original UI stylesheet and prototype script are kept byte for byte. `live.js` connects its controls to the API and renders live report data in the same layout.
 
 ## Local development
 
-1. Copy `.env.example` to `.env` and set the Gemini, Nimble, S3, PostgreSQL, and Redis values there. The web app reads the same root file. Visitors can start scanning without signing in.
-2. Start local infrastructure: `docker compose up -d postgres redis minio`.
-3. Install Python dependencies: `uv sync`.
-4. Apply migrations: `uv run alembic upgrade head`.
-5. Start the API: `uv run uvicorn skimple.api:app --reload --app-dir apps/api`.
-6. Start a worker: `uv run rq worker scans analyses --url redis://localhost:6379/0 --with-scheduler --worker-class rq.worker.SimpleWorker`.
-7. Install web dependencies: `npm install`, then run `npm run dev`.
+1. Copy `.env.example` to `.env` and set the Gemini, Nimble, S3, PostgreSQL, and Redis values. Set `ALLOWED_ORIGINS` to the address where you open the UI.
+2. Start infrastructure: `docker compose up -d postgres redis minio`. Create the private `skimple-media` bucket in MinIO.
+3. Install Python dependencies and migrate: `uv sync && uv run alembic upgrade head`.
+4. Start the API: `uv run uvicorn skimple.api:app --reload --app-dir apps/api`.
+5. Start the worker: `uv run rq worker scans analyses --url redis://localhost:6379/0 --with-scheduler --worker-class rq.worker.SimpleWorker`.
+6. Start the UI: `npm install && npm run dev`. Open `http://localhost:3000`.
 
-The API is at `http://localhost:8000`, the web app at `http://localhost:3000`, and MinIO's console at `http://localhost:9001`. For local development, create the private `skimple-media` bucket in MinIO. In production, use TigerData PostgreSQL, a private S3-compatible bucket with lifecycle expiry, and deployed API/worker services. Each browser keeps an anonymous visitor key in local storage. Clearing browser storage loses access to that visitor's saved data.
+The UI server reads `PUBLIC_API_URL` from its environment; it defaults to `http://localhost:8000`. The six illustrated shelf products are interactive samples. Scans made with real product photos use the API for extraction, confirmation, review processing, analysis, reports, and report-grounded chat. Saved products and questionnaire answers sync to the anonymous visitor record. Face-photo observation remains subject to `ENABLE_FACE_PHOTO`; when disabled, the UI reports that the pilot is unavailable rather than inventing an observation.
 
-## What works
+## Data and evidence
 
-- Anonymous front/back image upload with format, dimensions and size validation, private object storage, and queued extraction.
-- Gemini structured extraction, INCI normalization, bounded Nimble product search, user correction, and formulation persistence.
-- Questionnaire profile, confirmed-formulation analysis, deterministic compatibility rules, report retrieval, and deletion endpoints.
-- Research ingestion commands for PubMed/OpenAlex, a source-verified claim model, and a conservative evidence fallback when curated claims are unavailable.
-- Source-permission-gated review processing. Unlicensed pages are not stored or analyzed.
+Product photos are uploaded privately for extraction and expire under the configured media retention. The backend only publishes ingredient findings linked to reviewed claims and papers. Review themes only include sources with recorded use permission; missing coverage is shown explicitly. The UI's sample product research and demo face remain labeled examples.
 
-## Rollout gates
+Each browser has an anonymous visitor key in local storage. Clearing it loses access to saved reports and favorites. The API also provides `DELETE /v1/me/data` for complete visitor data removal. See [deployment notes](docs/deployment.md) for research curation and privacy operations.
 
-Live integrations require credentials and source-use permissions. Scientific claims need domain review and a curated evidence corpus before a public beta. The experimental face-photo feature is disabled by default and requires representative evaluation. See [deployment notes](docs/deployment.md).
+## Checks
 
-Run `uv run pytest` and `npm run lint` to verify the code. API docs are at `/docs` in development.
+Run `uv run pytest`, `uv run ruff check apps/api/skimple tests`, and `npm run build`. With the UI server on port 4173 and Playwright Chromium installed, run `npm test` for the live browser journey. API documentation is at `http://localhost:8000/docs`.

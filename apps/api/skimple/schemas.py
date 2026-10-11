@@ -57,6 +57,10 @@ class FeedbackRequest(BaseModel):
     note: str = Field(default="", max_length=1000)
 
 
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+
+
 class ReviewFinding(BaseModel):
     aspect: Literal[
         "hydration", "pilling", "stickiness", "breakouts", "irritation", "fragrance", "other"

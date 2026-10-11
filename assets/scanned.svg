@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" role="img" aria-label="Scanned skincare product illustration">
+  <rect x="96" y="31" width="208" height="49" rx="12" fill="#799480" stroke="#3b5947" stroke-width="5"/>
+  <rect x="79" y="75" width="242" height="290" rx="27" fill="#f7f1e5" stroke="#3b5947" stroke-width="6"/>
+  <path d="M81 124h238" stroke="#3b5947" stroke-width="5"/>
+  <rect x="103" y="159" width="194" height="148" rx="12" fill="#dbe6d2"/>
+  <text x="200" y="216" text-anchor="middle" font-family="sans-serif" font-size="27" font-weight="700" fill="#3b5947">your new</text>
+  <text x="200" y="254" text-anchor="middle" font-family="sans-serif" font-size="27" font-weight="700" fill="#3b5947">shelf mate ✳</text>
+</svg>

@@ -1,4 +1,5 @@
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 
 import sentry_sdk
@@ -24,13 +25,20 @@ from skimple.models import (
     ProductFormulation,
     ProductScan,
     Report,
+    SavedProduct,
     SkinPhotoAssessment,
     SkinProfile,
     User,
     uid,
 )
 from skimple.providers import observe_skin
-from skimple.schemas import AnalysisRequest, ConfirmRequest, FeedbackRequest, ProfileRequest
+from skimple.schemas import (
+    AnalysisRequest,
+    ChatRequest,
+    ConfirmRequest,
+    FeedbackRequest,
+    ProfileRequest,
+)
 from skimple.visitor import current_user
 
 log = logging.getLogger(__name__)
@@ -224,6 +232,47 @@ def get_profile(user: User = Depends(current_user), db: Session = Depends(get_db
     }
 
 
+@app.delete("/v1/me/skin-profile")
+def delete_profile(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    db.execute(delete(SkinProfile).where(SkinProfile.user_id == user.id))
+    db.commit()
+    return {"deleted": True}
+
+
+def valid_product_key(product_key: str) -> str:
+    if not re.fullmatch(r"(?:demo:|report:)[A-Za-z0-9_-]{1,110}", product_key):
+        raise HTTPException(422, "Invalid product key")
+    return product_key
+
+
+@app.get("/v1/me/saved")
+def get_saved(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return {"product_keys": db.scalars(
+        select(SavedProduct.product_key).where(SavedProduct.user_id == user.id)
+    ).all()}
+
+
+@app.put("/v1/me/saved/{product_key}")
+def save_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    product_key = valid_product_key(product_key)
+    if product_key.startswith("report:"):
+        owned(db, Report, product_key.removeprefix("report:"), user)
+    if not db.get(SavedProduct, (user.id, product_key)):
+        db.add(SavedProduct(user_id=user.id, product_key=product_key))
+        db.commit()
+    return {"saved": True}
+
+
+@app.delete("/v1/me/saved/{product_key}")
+def unsave_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    product_key = valid_product_key(product_key)
+    db.execute(delete(SavedProduct).where(
+        SavedProduct.user_id == user.id, SavedProduct.product_key == product_key
+    ))
+    db.commit()
+    return {"saved": False}
+
+
 @app.post("/v1/me/skin-photo")
 def add_skin_photo(
     photo: UploadFile = File(...),
@@ -341,6 +390,80 @@ def get_report(report_id: str, user: User = Depends(current_user), db: Session =
     return {"report_id": report.id, "created_at": report.created_at, **report.result}
 
 
+@app.get("/v1/me/reports")
+def list_my_reports(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    rows = db.execute(
+        select(Report, AnalysisRun, ProductFormulation, Product, Brand)
+        .join(AnalysisRun, Report.analysis_id == AnalysisRun.id)
+        .join(ProductFormulation, AnalysisRun.formulation_id == ProductFormulation.id)
+        .join(Product, ProductFormulation.product_id == Product.id)
+        .join(Brand, Product.brand_id == Brand.id)
+        .where(Report.user_id == user.id)
+        .order_by(Report.created_at.desc())
+        .limit(50)
+    ).all()
+    return {"reports": [
+        {
+            "report_id": report.id,
+            "created_at": report.created_at,
+            "brand": brand.name,
+            "product_name": product.name,
+            "category": product.category or "other",
+            "variant": formula.variant,
+            "raw_ingredient_text": formula.raw_ingredient_text,
+            "result": report.result,
+        }
+        for report, _, formula, product, brand in rows
+    ]}
+
+
+@app.post("/v1/reports/{report_id}/chat")
+def chat_about_report(
+    report_id: str,
+    body: ChatRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    report = owned(db, Report, report_id, user)
+    result = report.result
+    question = body.question.strip().lower()
+    findings = result.get("ingredient_findings", [])
+    reviews = result.get("review_signal", {})
+    fit = result.get("compatibility", {})
+    if re.search(r"diagnos|eczema|rosacea|cancer|prescri|allerg|pregnan", question):
+        answer = "This report cannot assess a medical condition, pregnancy, or medicine interaction. Please ask a qualified clinician or pharmacist."
+        source = "Report scope"
+    elif re.search(r"ingredient|science|paper|research|evidence", question):
+        if findings:
+            answer = " ".join(
+                f"{f['ingredient']}: {f['synthesis']}" for f in findings[:3]
+            )
+            source = "Reviewed ingredient claims and linked papers"
+        else:
+            answer = "This formula has no reviewed, source-linked ingredient claims yet. Its ingredient list alone cannot establish how the finished product performs."
+            source = "Ingredient evidence status"
+    elif re.search(r"review|people|say|pilling|sticky|feel", question):
+        count = reviews.get("observation_count", 0)
+        aspects = reviews.get("aspects", [])
+        answer = (
+            f"There are {count} permitted review observations in this report. "
+            + ("The recorded themes are " + ", ".join(
+                f"{a['aspect']} ({a['sentiment']}, {a['count']})" for a in aspects[:5]
+            ) + ". " if aspects else "There is no reliable review theme to summarize yet. ")
+            + "Reviews describe personal experiences, not clinical proof."
+        )
+        source = "Permitted product review observations"
+    elif re.search(r"skin|suit|fit|good|dry|oily|sensitive|custom", question):
+        classification = fit.get("classification", "uncertain").replace("_", " ")
+        limitations = fit.get("limitations", [])
+        answer = f"The report's compatibility result is {classification}. " + " ".join(limitations[:2])
+        source = "Your questionnaire and report compatibility result"
+    else:
+        answer = "This report can help with ingredient evidence, permitted review themes, and your skin fit. " + " ".join(fit.get("limitations", [])[:2])
+        source = "Product report"
+    return {"answer": answer, "source": source}
+
+
 @app.get("/v1/reports/{report_id}/alternatives")
 def get_alternatives(
     report_id: str, user: User = Depends(current_user), db: Session = Depends(get_db)
@@ -377,6 +500,7 @@ def delete_me(user: User = Depends(current_user), db: Session = Depends(get_db))
             delete_image(key)
     for model in (
         Feedback,
+        SavedProduct,
         Report,
         AnalysisRun,
         ProductScan,

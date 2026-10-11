@@ -1,12 +1,12 @@
 {
-  "name": "skimple-monorepo",
+  "name": "skimple",
   "private": true,
-  "workspaces": ["apps/web"],
   "scripts": {
-    "dev": "npm run dev --workspace @skimple/web",
-    "build": "npm run build --workspace @skimple/web",
-    "lint": "npm run lint --workspace @skimple/web",
-    "format:check": "npm run format:check --workspace @skimple/web",
-    "start": "npm run start --workspace @skimple/web"
-  }
+    "dev": "node server.mjs",
+    "build": "node --check app.js && node --check live.js && node --check server.mjs",
+    "lint": "npm run build",
+    "start": "node server.mjs",
+    "test": "node tests/live-journey.cjs"
+  },
+  "devDependencies": {"playwright": "1.62.1"}
 }
