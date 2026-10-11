@@ -1,0 +1,10 @@
+.git
+.venv
+node_modules
+apps/web/.next
+.env
+apps/web/.env.local
+__pycache__
+*.pyc
+*.sqlite3
+

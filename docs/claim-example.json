@@ -1,0 +1,12 @@
+{
+  "ingredient": "Niacinamide",
+  "outcome": "skin_barrier_support",
+  "effect": "potential_benefit",
+  "confidence": "limited",
+  "synthesis": "Replace this text with a reviewer-approved, study-specific synthesis.",
+  "version": "v1",
+  "reviewed_by": "replace-with-reviewer-id",
+  "papers": [
+    {"pmid": "replace-with-verified-pmid", "relation": "supports", "relevance": 50}
+  ]
+}

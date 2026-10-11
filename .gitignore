@@ -1,0 +1,15 @@
+.env
+.env.local
+!.env.example
+!.env.local.example
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.pyc
+node_modules/
+.next/
+coverage/
+dist/
+*.sqlite3
+

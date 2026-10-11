@@ -1,0 +1,12 @@
+{
+  "name": "skimple-monorepo",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev": "npm run dev --workspace @skimple/web",
+    "build": "npm run build --workspace @skimple/web",
+    "lint": "npm run lint --workspace @skimple/web",
+    "format:check": "npm run format:check --workspace @skimple/web",
+    "start": "npm run start --workspace @skimple/web"
+  }
+}

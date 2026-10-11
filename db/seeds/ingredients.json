@@ -1,0 +1,18 @@
+[
+  {"inci_name":"Water","synonyms":["Aqua"]},
+  {"inci_name":"Glycerin","synonyms":["Glycerol","Glycerine"]},
+  {"inci_name":"Niacinamide","synonyms":["Nicotinamide","Vitamin B3"]},
+  {"inci_name":"Sodium Hyaluronate","synonyms":[]},
+  {"inci_name":"Hyaluronic Acid","synonyms":[]},
+  {"inci_name":"Ceramide NP","synonyms":[]},
+  {"inci_name":"Panthenol","synonyms":["Provitamin B5"]},
+  {"inci_name":"Salicylic Acid","synonyms":[]},
+  {"inci_name":"Lactic Acid","synonyms":[]},
+  {"inci_name":"Glycolic Acid","synonyms":[]},
+  {"inci_name":"Ascorbic Acid","synonyms":["Vitamin C"]},
+  {"inci_name":"Retinol","synonyms":[]},
+  {"inci_name":"Tocopherol","synonyms":["Vitamin E"]},
+  {"inci_name":"Allantoin","synonyms":[]},
+  {"inci_name":"Petrolatum","synonyms":[]},
+  {"inci_name":"Dimethicone","synonyms":[]}
+]

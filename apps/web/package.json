@@ -1,0 +1,29 @@
+{
+  "name": "@skimple/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start",
+    "lint": "eslint .",
+    "format:check": "prettier --check src next.config.ts eslint.config.mjs"
+  },
+  "dependencies": {
+    "@next/env": "^16.4.0",
+    "@sentry/nextjs": "^11.6.0",
+    "next": "^16.4.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-oidc-context": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.46.0"
+  }
+}
