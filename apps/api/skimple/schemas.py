@@ -16,6 +16,29 @@ class Extraction(BaseModel):
     incomplete_ingredients: bool = False
 
 
+class ProductIdentity(BaseModel):
+    brand: str = ""
+    product_name: str = ""
+    variant: str = ""
+    uncertain: bool = False
+
+
+class WebIngredientEvidence(BaseModel):
+    source_url: str = ""
+    brand: str = ""
+    product_name: str = ""
+    variant: str = ""
+    raw_ingredient_text: str = ""
+    ingredients_in_order: list[str] = Field(default_factory=list)
+    exact_product_match: bool = False
+    complete_list: bool = False
+
+
+class SearchSelection(BaseModel):
+    title: str = Field(min_length=3, max_length=255)
+    source_url: str = Field(min_length=8, max_length=1000)
+
+
 class ConfirmRequest(BaseModel):
     brand: str = Field(min_length=1, max_length=200)
     product_name: str = Field(min_length=1, max_length=255)

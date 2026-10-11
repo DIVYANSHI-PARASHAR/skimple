@@ -31,6 +31,7 @@ const report = {
     const calls = [];
     const ownedKeys = new Set();
     let profilePayload;
+    let analysisAttempts = 0;
     page.on('pageerror', error => errors.push(error.message));
     page.on('console', entry => {if (entry.type() === 'warning') console.warn(entry.text());});
     await page.route('http://localhost:8000/**', async route => {
@@ -48,9 +49,15 @@ const report = {
       else if (path.startsWith('/v1/me/owned/') && request.method() === 'DELETE') {ownedKeys.delete(decodeURIComponent(path.slice('/v1/me/owned/'.length)));body = {owned:false};}
       else if (path === '/v1/me/skin-profile' && request.method() === 'GET') body = {questionnaire:profilePayload || null,derived:null};
       else if (path === '/v1/me/skin-profile' && request.method() === 'PUT') {profilePayload = request.postDataJSON();body = {profile_version:'v1',derived:{basis:'questionnaire'}};}
+      else if (path === '/v1/products/search') body = {products:[{title:'Sample Fresh Gel',source_url:'https://example.com/fresh-gel',image_url:'https://example.com/fresh-gel.jpg'}]};
+      else if (path === '/v1/scans/from-search' && request.method() === 'POST') body = {scan_id:'scan-one',status:'CREATED'};
       else if (path === '/v1/scans' && request.method() === 'POST') body = {scan_id:'scan-one',status:'CREATED'};
       else if (path === '/v1/scans/scan-one' && request.method() === 'GET') body = {scan_id:'scan-one',status:'NEEDS_CONFIRMATION',extraction:{brand:'Sample',product_name:'Fresh Gel',variant:'',raw_ingredient_text:'Aqua, Glycerin',ingredients_in_order:['Aqua','Glycerin']}};
-      else if (path === '/v1/analyses' && request.method() === 'POST') body = {analysis_id:'analysis-one',status:'CREATED',report_id:null};
+      else if (path === '/v1/analyses' && request.method() === 'POST') {
+        analysisAttempts++;
+        if (analysisAttempts === 1) {status = 503;body = {detail:'Analysis temporarily unavailable'};}
+        else body = {analysis_id:'analysis-one',status:'CREATED',report_id:null};
+      }
       else if (path === '/v1/analyses/analysis-one') body = {analysis_id:'analysis-one',status:'COMPLETED',report_id:'report-two'};
       else if (path === '/v1/reports/report-two') body = report;
       else if (path === '/v1/reports/report-one/chat') body = {answer:'Glycerin can support surface hydration.',source:'Reviewed ingredient claims'};
@@ -119,6 +126,13 @@ const report = {
     await page.locator('.lookup-option[data-id="report-report-one"]').click();
     await page.waitForFunction(() => document.querySelectorAll('.owned-product').length === 1);
     assert.ok(calls.includes('PUT /v1/me/owned/report:report-one'));
+    await page.locator('.add-product-tile').click();
+    await page.locator('#owned-search').fill('Sample Fresh');
+    await page.locator('[data-owned-web-suggestion]').first().waitFor();
+    assert.match(await page.locator('[data-owned-web-suggestion] img').first().getAttribute('src'), /fresh-gel.jpg/);
+    await page.locator('[data-owned-web-suggestion]').first().click();
+    assert.equal(await page.locator('.selected-product strong').innerText(), 'Sample Fresh Gel');
+    await page.locator('.close-button').click();
     for (const width of [320,390,768,1440]) {
       await page.setViewportSize({width,height:844});
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `skin page overflow at ${width}`);
@@ -141,16 +155,21 @@ const report = {
     assert.ok(calls.includes('DELETE /v1/me/owned/report:report-one'));
     await page.locator('.header-back').click();
     await page.locator('[data-action="scan"]').first().click();
-    await page.locator('[data-upload="front"]').setInputFiles(picture);
-    await page.locator('[data-upload="back"]').setInputFiles(picture);
+    assert.equal(await page.locator('[data-action="demo-product"]').count(), 0);
+    await page.locator('#new-product-search').fill('Sample Fresh');
+    await page.locator('.product-search-option').first().waitFor();
+    assert.match(await page.locator('.product-search-option img').first().getAttribute('src'), /fresh-gel.jpg/);
+    await page.locator('.product-search-option').first().click();
     await page.locator('[data-action="extract"]').click();
-    await page.waitForSelector('#confirm-product');
-    assert.equal(await page.locator('#product-brand').inputValue(),'Sample');
-    await page.locator('#confirm-product button[type="submit"]').click();
+    await page.locator('[data-action="retry-product-analysis"]').waitFor();
+    assert.match(await page.locator('.scan-error').innerText(), /Analysis temporarily unavailable/);
+    await page.locator('[data-action="retry-product-analysis"]').click();
     await page.waitForURL(/#product\/report-report-two/);
-    assert.ok(calls.includes('POST /v1/scans'));
+    assert.equal(analysisAttempts, 2);
+    assert.ok(calls.includes('POST /v1/scans/from-search'));
     assert.ok(calls.includes('POST /v1/scans/scan-one/confirm'));
     assert.ok(calls.includes('POST /v1/analyses'));
+    assert.ok(calls.includes('PUT /v1/me/owned/report:report-two'));
     assert.deepEqual(errors,[]);
     await page.setViewportSize({width:390,height:844});
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
@@ -177,12 +196,11 @@ const report = {
     await page.goto(base);
     await page.locator('[data-action="scan"]').first().click();
     await page.locator('[data-upload="front"]').setInputFiles(picture);
-    await page.locator('[data-upload="back"]').setInputFiles(picture);
     await page.locator('[data-action="extract"]').click();
     await page.locator('.scan-progress').waitFor();
     await page.locator('.scan-error').waitFor();
     assert.match(await page.locator('.scan-error').innerText(), /temporarily unavailable/);
-    assert.equal(await page.locator('.upload-zone img').count(), 2);
-    console.log('PASS sourced catalog, complete formulas, staged papers, chats, favorites, profile sync, scan-to-report, failure recovery, mobile layout');
+    assert.equal(await page.locator('.upload-zone img').count(), 1);
+    console.log('PASS sourced catalog, complete formulas, staged papers, chats, favorites, profile sync, product search, scan-to-report, failure recovery, mobile layout');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

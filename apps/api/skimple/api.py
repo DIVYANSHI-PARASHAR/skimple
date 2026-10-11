@@ -1,6 +1,7 @@
 import logging
 import re
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlparse
 
 import sentry_sdk
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -33,13 +34,14 @@ from skimple.models import (
     User,
     uid,
 )
-from skimple.providers import observe_skin
+from skimple.providers import observe_skin, search_products
 from skimple.schemas import (
     AnalysisRequest,
     ChatRequest,
     ConfirmRequest,
     FeedbackRequest,
     ProfileRequest,
+    SearchSelection,
 )
 from skimple.visitor import current_user
 
@@ -79,7 +81,7 @@ def health():
 @app.post("/v1/scans", status_code=202)
 def create_scan(
     front: UploadFile = File(...),
-    back: UploadFile = File(...),
+    back: UploadFile | None = File(None),
     idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=8, max_length=255),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -93,15 +95,16 @@ def create_scan(
         return {"scan_id": existing.id, "status": existing.status}
     enforce_rate_limit(user.id, "scan", 20)
     front_data, front_mime = validated_image(front)
-    back_data, back_mime = validated_image(back)
+    back_data, back_mime = validated_image(back) if back else (None, None)
     scan = ProductScan(user_id=user.id, idempotency_key=idempotency_key, front_key="", back_key="")
     db.add(scan)
     db.flush()
     scan.front_key = f"scans/{user.id}/{scan.id}/front"
-    scan.back_key = f"scans/{user.id}/{scan.id}/back"
+    scan.back_key = f"scans/{user.id}/{scan.id}/back" if back else ""
     try:
         put_image(scan.front_key, front_data, front_mime)
-        put_image(scan.back_key, back_data, back_mime)
+        if back:
+            put_image(scan.back_key, back_data, back_mime)
         db.commit()
         enqueue("scans", run_extraction, scan.id)
     except Exception as exc:
@@ -111,11 +114,62 @@ def create_scan(
             db.delete(persisted)
             db.commit()
         for key in (scan.front_key, scan.back_key):
+            if not key:
+                continue
             try:
                 delete_image(key)
             except Exception:
                 log.warning("Unable to remove failed scan object %s", key, exc_info=True)
         raise HTTPException(503, "Scan storage or queue unavailable") from exc
+    return {"scan_id": scan.id, "status": scan.status}
+
+
+@app.get("/v1/products/search")
+def product_search(q: str, user: User = Depends(current_user)):
+    query = q.strip()
+    if len(query) < 3 or len(query) > 120:
+        raise HTTPException(422, "Enter at least three characters to search")
+    enforce_rate_limit(user.id, "product_search", 120)
+    try:
+        return {"products": search_products(query)}
+    except Exception as exc:
+        log.exception("Nimble product search unavailable")
+        raise HTTPException(503, "Product search is temporarily unavailable") from exc
+
+
+@app.post("/v1/scans/from-search", status_code=202)
+def create_scan_from_search(
+    body: SearchSelection,
+    idempotency_key: str = Header(..., alias="Idempotency-Key", min_length=8, max_length=255),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    url = urlparse(body.source_url)
+    if url.scheme != "https" or not url.hostname or url.username or url.password:
+        raise HTTPException(422, "Invalid product source")
+    existing = db.scalar(
+        select(ProductScan).where(
+            ProductScan.user_id == user.id, ProductScan.idempotency_key == idempotency_key
+        )
+    )
+    if existing:
+        return {"scan_id": existing.id, "status": existing.status}
+    enforce_rate_limit(user.id, "scan", 20)
+    scan = ProductScan(
+        user_id=user.id,
+        idempotency_key=idempotency_key,
+        front_key="",
+        back_key="",
+        extraction={"selected_title": body.title.strip(), "source_url": body.source_url},
+    )
+    db.add(scan)
+    db.commit()
+    try:
+        enqueue("scans", run_extraction, scan.id)
+    except Exception as exc:
+        db.delete(scan)
+        db.commit()
+        raise HTTPException(503, "Product lookup queue unavailable") from exc
     return {"scan_id": scan.id, "status": scan.status}
 
 
