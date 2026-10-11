@@ -6,6 +6,9 @@ import unicodedata
 ALIASES = {
     "aqua": "Water",
     "water": "Water",
+    "aqua (water)": "Water",
+    "aqua / water / eau": "Water",
+    "water (aqua) (eau)": "Water",
     "vitamin b3": "Niacinamide",
     "nicotinamide": "Niacinamide",
     "hyaluronic acid": "Hyaluronic Acid",

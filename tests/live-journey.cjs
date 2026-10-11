@@ -1,5 +1,18 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const {chromium} = require('playwright');
+
+const bundle = JSON.parse(fs.readFileSync(path.join(__dirname, '../db/seeds/products.json'), 'utf8'));
+const papers = JSON.parse(fs.readFileSync(path.join(__dirname, '../db/research/papers.json'), 'utf8'));
+const catalogRows = bundle.products.map(product => ({
+  catalog_key:product.key,brand:product.brand,product_name:product.name,category:product.category,
+  variant:product.variant,region:product.region,source_url:product.source_url,source_metadata:product,
+  raw_ingredient_text:product.ingredients.join(', '),
+  ingredients:product.ingredients.map((raw_name, i) => ({raw_name,inci_name:raw_name,position:i+1,disclosed_concentration:product.concentrations[raw_name] || null})),
+  literature:papers.papers.flatMap(paper => paper.findings.filter(f => product.ingredients.includes(f.ingredient)).map(f => ({...f.study,title:paper.title,ingredient:f.ingredient,year:paper.year,pmid:paper.pmid,url:paper.source_url,status:'awaiting_scientific_review'}))),
+  result:{ingredient_findings:[],compatibility:{classification:'uncertain',confidence:'limited',limitations:[]},review_signal:{observation_count:0,source_count:0,aspects:[]}},
+}));
 
 const base = process.env.BASE_URL || 'http://127.0.0.1:4173';
 const picture = {name:'product.png', mimeType:'image/png', buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64')};
@@ -19,6 +32,7 @@ const report = {
     const ownedKeys = new Set();
     let profilePayload;
     page.on('pageerror', error => errors.push(error.message));
+    page.on('console', entry => {if (entry.type() === 'warning') console.warn(entry.text());});
     await page.route('http://localhost:8000/**', async route => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
@@ -26,6 +40,8 @@ const report = {
       let body = {};
       let status = 200;
       if (path === '/v1/me/reports') body = {reports:[{report_id:'report-one',brand:'Acme',product_name:'Daily Lotion',category:'moisturizer',variant:'',raw_ingredient_text:'Aqua, Glycerin',result:report}]};
+      else if (path === '/v1/catalog') body = {products:catalogRows};
+      else if (path === '/v1/catalog/byoma/chat') body = {answer:catalogRows.find(p => p.catalog_key === 'byoma').source_metadata.usage,source:'Published product directions'};
       else if (path === '/v1/me/saved') body = {product_keys:[]};
       else if (path === '/v1/me/owned' && request.method() === 'GET') body = {product_keys:[...ownedKeys]};
       else if (path.startsWith('/v1/me/owned/') && request.method() === 'PUT') {ownedKeys.add(decodeURIComponent(path.slice('/v1/me/owned/'.length)));body = {owned:true};}
@@ -42,8 +58,35 @@ const report = {
       await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
     });
     await page.goto(base);
-    await page.waitForFunction(() => document.querySelectorAll('.product-card').length === 7);
-    assert.equal(await page.locator('.product-card').count(),7);
+    await page.waitForFunction(() => document.querySelectorAll('.product-card').length === 11, null, {timeout:5000})
+      .catch(error => {console.error({errors,calls});throw error;});
+    assert.equal(await page.locator('.product-card').count(),11);
+    assert.equal(await page.locator('script[src="live.js"]').count(),1);
+    assert.equal(calls.filter(call => call === 'GET /v1/catalog').length,1);
+    assert.doesNotMatch(await page.locator('#app').innerText(), /fictional|illustrative|dummy|demo research/i);
+    await page.locator('a[href="#product/byoma"]').click();
+    await page.locator('[data-tab="ingredients"]').click();
+    assert.match(await page.locator('.inci').innerText(), /Caprylhydroxamic Acid/);
+    await page.locator('[data-tab="reviews"]').click();
+    assert.match(await page.locator('#report-content').innerText(), /No permitted review themes/);
+    assert.doesNotMatch(await page.locator('#report-content').innerText(), /fictional|% positive/);
+    await page.locator('[data-tab="sources"]').click();
+    assert.match(await page.locator('#report-content').innerText(), /Awaiting scientific review/);
+    assert.ok(await page.locator('a[href="https://pubmed.ncbi.nlm.nih.gov/16766489/"]').count() > 0);
+    await page.locator('[data-action="chat"]').click();
+    await page.locator('[data-question="How could I use it?"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.message-source').length === 1);
+    assert.ok(calls.includes('POST /v1/catalog/byoma/chat'));
+    await page.locator('.close-button').click();
+    await page.locator('a.back-link').click();
+    await page.locator('[data-filter="Exfoliants"]').click();
+    assert.equal(await page.locator('.product-card').count(),1);
+    await page.locator('[data-filter="All products"]').click();
+    await page.locator('#product-search').fill('Squalane');
+    assert.equal(await page.locator('.product-card').count(),1);
+    await page.locator('#product-search').fill('no matching product');
+    assert.equal(await page.locator('.product-card').count(),0);
+    await page.locator('#product-search').fill('');
     await page.locator('a[href="#product/report-report-one"]').click();
     await page.locator('[data-tab="ingredients"]').click();
     assert.match(await page.locator('#report-content').innerText(), /Glycerin can support surface hydration/);
@@ -111,6 +154,24 @@ const report = {
     assert.deepEqual(errors,[]);
     await page.setViewportSize({width:390,height:844});
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    const retryPage = await browser.newPage();
+    let available = false;
+    await retryPage.route('http://localhost:8000/**', async route => {
+      const path = new URL(route.request().url()).pathname;
+      if (path === '/v1/catalog' && !available) {
+        await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({detail:'Temporarily unavailable'})});
+        return;
+      }
+      const body = path === '/v1/catalog' ? {products:catalogRows} : path.endsWith('/reports') ? {reports:[]} : path.endsWith('/skin-profile') ? {questionnaire:null,derived:null} : {product_keys:[]};
+      await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+    });
+    await retryPage.goto(base);
+    await retryPage.getByRole('button',{name:'Try again ↗'}).waitFor();
+    assert.match(await retryPage.locator('#product-grid').innerText(), /couldn’t load/);
+    available = true;
+    await retryPage.getByRole('button',{name:'Try again ↗'}).click();
+    await retryPage.waitForFunction(() => document.querySelectorAll('.product-card').length === 10);
+    await retryPage.close();
     await page.route('http://localhost:8000/v1/scans/scan-failed', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'FAILED',error_code:'MODEL_UNAVAILABLE'})}));
     await page.route('http://localhost:8000/v1/scans', route => route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'CREATED'})}));
     await page.goto(base);
@@ -122,6 +183,6 @@ const report = {
     await page.locator('.scan-error').waitFor();
     assert.match(await page.locator('.scan-error').innerText(), /temporarily unavailable/);
     assert.equal(await page.locator('.upload-zone img').count(), 2);
-    console.log('PASS live shelf, report tabs, chat, favorites, profile sync, scan-to-report, mobile layout');
+    console.log('PASS sourced catalog, complete formulas, staged papers, chats, favorites, profile sync, scan-to-report, failure recovery, mobile layout');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

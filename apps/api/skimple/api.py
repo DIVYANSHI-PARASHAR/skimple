@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from skimple.catalog import catalog_product
 from skimple.config import settings
 from skimple.db import get_db
 from skimple.ingredients import formula_hash, normalize_name
@@ -241,23 +242,29 @@ def delete_profile(user: User = Depends(current_user), db: Session = Depends(get
 
 
 def valid_product_key(product_key: str) -> str:
-    if not re.fullmatch(r"(?:demo:|report:)[A-Za-z0-9_-]{1,110}", product_key):
+    if not re.fullmatch(r"(?:demo:|report:|catalog:)[A-Za-z0-9_-]{1,110}", product_key):
         raise HTTPException(422, "Invalid product key")
     return product_key
 
 
 @app.get("/v1/me/saved")
 def get_saved(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return {"product_keys": db.scalars(
-        select(SavedProduct.product_key).where(SavedProduct.user_id == user.id)
-    ).all()}
+    return {
+        "product_keys": db.scalars(
+            select(SavedProduct.product_key).where(SavedProduct.user_id == user.id)
+        ).all()
+    }
 
 
 @app.put("/v1/me/saved/{product_key}")
-def save_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def save_product(
+    product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     product_key = valid_product_key(product_key)
     if product_key.startswith("report:"):
         owned(db, Report, product_key.removeprefix("report:"), user)
+    if product_key.startswith("catalog:") and not catalog_product(db, product_key[8:]):
+        raise HTTPException(404, "Catalog product not found")
     if not db.get(SavedProduct, (user.id, product_key)):
         db.add(SavedProduct(user_id=user.id, product_key=product_key))
         db.commit()
@@ -265,27 +272,37 @@ def save_product(product_key: str, user: User = Depends(current_user), db: Sessi
 
 
 @app.delete("/v1/me/saved/{product_key}")
-def unsave_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def unsave_product(
+    product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     product_key = valid_product_key(product_key)
-    db.execute(delete(SavedProduct).where(
-        SavedProduct.user_id == user.id, SavedProduct.product_key == product_key
-    ))
+    db.execute(
+        delete(SavedProduct).where(
+            SavedProduct.user_id == user.id, SavedProduct.product_key == product_key
+        )
+    )
     db.commit()
     return {"saved": False}
 
 
 @app.get("/v1/me/owned")
 def get_owned_products(user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return {"product_keys": db.scalars(
-        select(OwnedProduct.product_key).where(OwnedProduct.user_id == user.id)
-    ).all()}
+    return {
+        "product_keys": db.scalars(
+            select(OwnedProduct.product_key).where(OwnedProduct.user_id == user.id)
+        ).all()
+    }
 
 
 @app.put("/v1/me/owned/{product_key}")
-def add_owned_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def add_owned_product(
+    product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     product_key = valid_product_key(product_key)
     if product_key.startswith("report:"):
         owned(db, Report, product_key.removeprefix("report:"), user)
+    if product_key.startswith("catalog:") and not catalog_product(db, product_key[8:]):
+        raise HTTPException(404, "Catalog product not found")
     if not db.get(OwnedProduct, (user.id, product_key)):
         db.add(OwnedProduct(user_id=user.id, product_key=product_key))
         db.commit()
@@ -293,11 +310,15 @@ def add_owned_product(product_key: str, user: User = Depends(current_user), db: 
 
 
 @app.delete("/v1/me/owned/{product_key}")
-def remove_owned_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def remove_owned_product(
+    product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     product_key = valid_product_key(product_key)
-    db.execute(delete(OwnedProduct).where(
-        OwnedProduct.user_id == user.id, OwnedProduct.product_key == product_key
-    ))
+    db.execute(
+        delete(OwnedProduct).where(
+            OwnedProduct.user_id == user.id, OwnedProduct.product_key == product_key
+        )
+    )
     db.commit()
     return {"owned": False}
 
@@ -431,19 +452,21 @@ def list_my_reports(user: User = Depends(current_user), db: Session = Depends(ge
         .order_by(Report.created_at.desc())
         .limit(50)
     ).all()
-    return {"reports": [
-        {
-            "report_id": report.id,
-            "created_at": report.created_at,
-            "brand": brand.name,
-            "product_name": product.name,
-            "category": product.category or "other",
-            "variant": formula.variant,
-            "raw_ingredient_text": formula.raw_ingredient_text,
-            "result": report.result,
-        }
-        for report, _, formula, product, brand in rows
-    ]}
+    return {
+        "reports": [
+            {
+                "report_id": report.id,
+                "created_at": report.created_at,
+                "brand": brand.name,
+                "product_name": product.name,
+                "category": product.category or "other",
+                "variant": formula.variant,
+                "raw_ingredient_text": formula.raw_ingredient_text,
+                "result": report.result,
+            }
+            for report, _, formula, product, brand in rows
+        ]
+    }
 
 
 @app.post("/v1/reports/{report_id}/chat")
@@ -454,8 +477,53 @@ def chat_about_report(
     db: Session = Depends(get_db),
 ):
     report = owned(db, Report, report_id, user)
-    result = report.result
-    question = body.question.strip().lower()
+    return answer_about_result(db, user, report.result, body.question)
+
+
+@app.get("/v1/catalog")
+def list_catalog(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    keys = db.scalars(
+        select(Product.catalog_key)
+        .where(Product.catalog_key.is_not(None))
+        .order_by(Product.catalog_key)
+        .limit(50)
+    ).all()
+    profile = db.get(SkinProfile, user.id)
+    return {"products": [row for key in keys if (row := catalog_product(db, key, profile))]}
+
+
+@app.get("/v1/catalog/{catalog_key}")
+def get_catalog_product(
+    catalog_key: str,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = catalog_product(db, catalog_key, db.get(SkinProfile, user.id))
+    if row is None:
+        raise HTTPException(404, "Catalog product not found")
+    return row
+
+
+@app.post("/v1/catalog/{catalog_key}/chat")
+def chat_about_catalog(
+    catalog_key: str,
+    body: ChatRequest,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    row = get_catalog_product(catalog_key, user, db)
+    if re.search(r"\b(use|apply|routine)\b", body.question, re.IGNORECASE) and not re.search(
+        r"diagnos|eczema|rosacea|cancer|prescri|allerg|pregnan", body.question, re.IGNORECASE
+    ):
+        return {
+            "answer": row["source_metadata"].get("usage", "Follow the product label."),
+            "source": row["source_url"],
+        }
+    return answer_about_result(db, user, row["result"], body.question)
+
+
+def answer_about_result(db: Session, user: User, result: dict, question: str) -> dict:
+    question = question.strip().lower()
     findings = result.get("ingredient_findings", [])
     reviews = result.get("review_signal", {})
     fit = result.get("compatibility", {})
@@ -464,9 +532,7 @@ def chat_about_report(
         source = "Report scope"
     elif re.search(r"ingredient|science|paper|research|evidence", question):
         if findings:
-            answer = " ".join(
-                f"{f['ingredient']}: {f['synthesis']}" for f in findings[:3]
-            )
+            answer = " ".join(f"{f['ingredient']}: {f['synthesis']}" for f in findings[:3])
             source = "Reviewed ingredient claims and linked papers"
         else:
             answer = "This formula has no reviewed, source-linked ingredient claims yet. Its ingredient list alone cannot establish how the finished product performs."
@@ -476,19 +542,28 @@ def chat_about_report(
         aspects = reviews.get("aspects", [])
         answer = (
             f"There are {count} permitted review observations in this report. "
-            + ("The recorded themes are " + ", ".join(
-                f"{a['aspect']} ({a['sentiment']}, {a['count']})" for a in aspects[:5]
-            ) + ". " if aspects else "There is no reliable review theme to summarize yet. ")
+            + (
+                "The recorded themes are "
+                + ", ".join(f"{a['aspect']} ({a['sentiment']}, {a['count']})" for a in aspects[:5])
+                + ". "
+                if aspects
+                else "There is no reliable review theme to summarize yet. "
+            )
             + "Reviews describe personal experiences, not clinical proof."
         )
         source = "Permitted product review observations"
     elif re.search(r"skin|suit|fit|good|dry|oily|sensitive|custom", question):
         classification = fit.get("classification", "uncertain").replace("_", " ")
         limitations = fit.get("limitations", [])
-        answer = f"The report's compatibility result is {classification}. " + " ".join(limitations[:2])
+        answer = f"The report's compatibility result is {classification}. " + " ".join(
+            limitations[:2]
+        )
         source = "Your questionnaire and report compatibility result"
     else:
-        answer = "This report can help with ingredient evidence, permitted review themes, and your skin fit. " + " ".join(fit.get("limitations", [])[:2])
+        answer = (
+            "This report can help with ingredient evidence, permitted review themes, and your skin fit. "
+            + " ".join(fit.get("limitations", [])[:2])
+        )
         source = "Product report"
     profile = db.get(SkinProfile, user.id)
     note = (profile.questionnaire.get("notes", "") if profile else "").strip()

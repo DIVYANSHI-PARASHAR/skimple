@@ -1,0 +1,81 @@
+[
+  {
+    "key": "byoma",
+    "url": "https://www.ulta.com/p/moisturizing-gel-cream-pimprod2034790?sku=2601332",
+    "final_url": "https://www.ulta.com/p/moisturizing-gel-cream-pimprod2034790?sku=2601332",
+    "status": 200,
+    "body_sha256": "4cf0990d33efbdecd70bc80f013c06c0193ca3044fa927c2350118ac4941587d",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "ordinary",
+    "url": "https://theordinary.com/en-us/niacinamide-10-zinc-1-serum-100436.html",
+    "final_url": "https://theordinary.com/en-us/niacinamide-10-zinc-1-serum-100436.html",
+    "status": 200,
+    "body_sha256": "65fd3da41923627e34e315e0594242a65d43d70598332ecc8058cf9ed0d328f2",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "joseon",
+    "url": "https://ie.beautyofjoseon.com/products/relief-sun-rice-probiotics-duo-global",
+    "final_url": "https://ie.beautyofjoseon.com/products/relief-sun-rice-probiotics-duo-global",
+    "status": 200,
+    "body_sha256": "8d4f3b642654932a806e76ac2eba149498b6aad1c50eb96229e68422a304a95c",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "cerave",
+    "url": "https://www.cerave.com/skincare/cleansers/hydrating-facial-cleanser",
+    "final_url": "https://www.cerave.com/skincare/cleansers/hydrating-facial-cleanser",
+    "status": 200,
+    "body_sha256": "b775db8a8d2ed216e8198d75924af142a4d200c86f3e39e0297b8ab4d9d8afb3",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "laroche",
+    "url": "https://www.laroche-posay.co.uk/en_GB/cicaplast-baume-b5-repairing-balm/LRP_035.html",
+    "direct_fetch_error": "HTTPStatusError",
+    "verified_via": "web source reader",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "cocokind",
+    "url": "https://www.cocokind.com/products/ceramide-barrier-serum",
+    "final_url": "https://www.cocokind.com/products/ceramide-barrier-serum",
+    "status": 200,
+    "body_sha256": "6fca9d643251372e7dc7079706c37d151b84b03aa32cdf338e3bc23f8b468adc",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "vanicream-cleanser",
+    "url": "https://www.vanicream.com/product/vanicream-facial-cleanser",
+    "final_url": "https://www.vanicream.com/product/vanicream-facial-cleanser",
+    "status": 200,
+    "body_sha256": "8294e2aa8129cbcf420e74065a6ab89609c2f42c5298beeb30806ad277244a24",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "vanicream-moisturizer",
+    "url": "https://www.vanicream.com/product/vanicream-daily-facial-moisturizer",
+    "final_url": "https://www.vanicream.com/product/vanicream-daily-facial-moisturizer",
+    "status": 200,
+    "body_sha256": "71c17edf21f2083425529aa8f9ee734ea3757dad21e62c84baf1f715fa8b9e55",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "paulas-bha",
+    "url": "https://www.paulaschoice.com/skin-perfecting-2pct-bha-liquid-exfoliant/201-2010.html",
+    "final_url": "https://www.paulaschoice.com/skin-perfecting-2pct-bha-liquid-exfoliant/201-2010.html",
+    "status": 200,
+    "body_sha256": "1d8a33e74488b36026660f4a1dd6fcfc32db887eff8a5fb0126d0f418ebdac49",
+    "retrieved_on": "2026-10-11"
+  },
+  {
+    "key": "ordinary-squalane",
+    "url": "https://theordinary.com/en-us/100-plant-derived-squalane-face-oil-100398.html",
+    "final_url": "https://theordinary.com/en-us/100-plant-derived-squalane-face-oil-100398.html",
+    "status": 200,
+    "body_sha256": "c197f16a3f8bc6c686f69596e07c42ec1bbaabdefa153411c0cea2960fb0d801",
+    "retrieved_on": "2026-10-11"
+  }
+]

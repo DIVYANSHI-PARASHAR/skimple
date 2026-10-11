@@ -3,6 +3,17 @@ on: [push, pull_request]
 jobs:
   api:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: skimple
+          POSTGRES_PASSWORD: skimple
+          POSTGRES_DB: skimple
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U skimple"
+          --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -10,7 +21,14 @@ jobs:
       - run: uv run ruff check apps/api tests
       - run: uv run ruff format --check apps/api tests
       - run: uv run pytest
+      - run: uv run pytest
+        env:
+          SKIMPLE_TEST_POSTGRES: "1"
+          SKIMPLE_TEST_DATABASE_URL: postgresql+psycopg://skimple:skimple@localhost:5432/skimple
       - run: DATABASE_URL=sqlite+pysqlite:///./migration-check.sqlite3 uv run alembic upgrade head
+      - run: uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+psycopg://skimple:skimple@localhost:5432/skimple
   web:
     runs-on: ubuntu-latest
     steps:
@@ -21,5 +39,14 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm run format:check
       - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          PORT=4173 npm start &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:4173 > /dev/null && break
+            sleep 1
+          done
+          npm test

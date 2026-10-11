@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-    database_url: str = "postgresql+psycopg://skimple:skimple@localhost:5432/skimple"
+    database_url: str
     redis_url: str = "redis://localhost:6379/0"
     s3_endpoint_url: str | None = None
     s3_bucket: str = "skimple-media"
@@ -19,7 +19,9 @@ class Settings(BaseSettings):
     openalex_api_key: str = ""
     pubmed_api_key: str = ""
     sentry_dsn: str = ""
-    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+    allowed_origins: str = (
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
+    )
     review_allowed_domains: str = ""
     enable_face_photo: bool = False
 

@@ -97,7 +97,9 @@ def _run_extraction(scan_id: str) -> None:
             log.exception("Extraction failed for scan %s", scan_id)
             job = get_current_job()
             model_unavailable = isinstance(exc, ClientError) and exc.code == 404
-            scan.status = "RETRYING" if job and job.retries_left and not model_unavailable else "FAILED"
+            scan.status = (
+                "RETRYING" if job and job.retries_left and not model_unavailable else "FAILED"
+            )
             scan.error_code = "MODEL_UNAVAILABLE" if model_unavailable else "EXTRACTION_UNAVAILABLE"
             db.commit()
             if job and not model_unavailable:

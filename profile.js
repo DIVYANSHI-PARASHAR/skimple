@@ -1,4 +1,4 @@
-/* The personal skin space. Suggestions and product lookup are local demo fixtures. */
+/* The personal skin space. Product lookup uses the live catalog and saved reports. */
 
 function hasSkinAnswers() {
   return Boolean(state.profile?.feel?.length && state.profile?.goals?.length);
@@ -98,17 +98,17 @@ function renderPersonalSections() {
 function watchoutsMarkup(products) {
   const sensitivities = state.profile.sensitivities || [];
   const watches = [];
-  if (sensitivities.includes('Fragrance')) watches.push({name:'Fragrance / parfum',tag:'Your reported sensitivity',reason:'You told us fragrance can be a trigger. This example flags fragrance labels for a closer look.',pattern:/\b(parfum|fragrance)\b/i,tip:'Look for “parfum” or “fragrance” on the complete label.'});
-  if (sensitivities.includes('Strong actives')) watches.push({name:'High-strength active formulas',tag:'A little extra caution',reason:'You reported discomfort with strong actives. This example highlights the 10% niacinamide serum for a tolerance check, not a blanket ingredient ban.',pattern:/niacinamide 10%/i,tip:'Strength and the whole formula matter. Niacinamide is not automatically something to avoid.'});
+  if (sensitivities.includes('Fragrance')) watches.push({name:'Fragrance / parfum',tag:'Your reported sensitivity',reason:'You told us fragrance can be a trigger. This flags fragrance labels for a closer look.',pattern:/\b(parfum|fragrance)\b/i,tip:'Look for “parfum” or “fragrance” on the complete label.'});
+  if (sensitivities.includes('Strong actives')) watches.push({name:'High-strength active formulas',tag:'A little extra caution',reason:'You reported discomfort with strong actives. This highlights the 10% niacinamide serum for a tolerance check, not a blanket ingredient ban.',pattern:/niacinamide 10%/i,tip:'Strength and the whole formula matter. Niacinamide is not automatically something to avoid.'});
   if (sensitivities.includes('New products')) watches.push({name:'New-to-you ingredients',tag:'Go one little step at a time',reason:'You told us new products can be tricky. Your answers don’t identify a specific ingredient allergy.',pattern:null,tip:'Keep track of which product you added and how your skin felt.'});
   return `<div class="skin-section-heading"><div><h2 id="watchouts-title">Ingredients to watch out for.</h2></div><span class="watchout-doodle" aria-hidden="true">✧</span></div>
     ${watches.length ? `<div class="watchout-list">${watches.map((watch, index) => {
       const matches = watch.pattern ? products.filter(p => watch.pattern.test(`${p.name} ${p.inci}`)) : [];
       return `<article class="watchout-row"><span class="watchout-number">0${index + 1}</span><div><div class="watchout-title"><h3>${watch.name}</h3><span class="pill yellow">${watch.tag}</span></div><p>${watch.reason}</p><p class="watchout-tip">${watch.tip}</p>
-        <div class="watchout-products">${matches.length ? matches.map(p => `<a href="#product/${encodeURIComponent(p.id)}">${icon('flask')} Check ${escapeHTML(p.brand)} ${escapeHTML(p.name)} ↗</a>`).join('') : `<span>${watch.pattern ? products.length ? 'No match in your products’ abbreviated demo labels. Full formulas still need checking.' : 'Add your products to see example label matches here.' : 'No specific ingredient is identified from this answer alone.'}</span>`}</div>
+        <div class="watchout-products">${matches.length ? matches.map(p => `<a href="#product/${encodeURIComponent(p.id)}">${icon('flask')} Check ${escapeHTML(p.brand)} ${escapeHTML(p.name)} ↗</a>`).join('') : `<span>${watch.pattern ? products.length ? 'No match in the stored formulas. Check your own packaging for regional differences or formula updates.' : 'Add your products to check their labels here.' : 'No specific ingredient is identified from this answer alone.'}</span>`}</div>
       </div></article>`;
     }).join('')}</div>` : `<div class="no-watchouts"><span aria-hidden="true">♡</span><div><h3>No specific avoid list, just yet.</h3><p>Your answers don’t establish an ingredient reaction. We won’t invent one from your skin type. You can update your preferences as you learn more.</p></div><button class="text-button" data-action="update-skin">Add a little context ↗</button></div>`}
-    <p class="small-copy watchout-footnote">Example watch-outs, not an allergy diagnosis. Abbreviated demo labels cannot rule out an ingredient or establish compatibility.</p>`;
+    <p class="small-copy watchout-footnote">Watch-outs reflect your reported sensitivities and stored formulas. They do not diagnose allergies or establish compatibility.</p>`;
 }
 
 function routineMarkup(products) {
