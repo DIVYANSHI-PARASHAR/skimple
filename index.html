@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#fcf9f2" />
+    <meta name="description" content="A little science. A lot of skin love. Explore skimple's playful skincare research prototype." />
+    <title>skimple — a little science, a lot of skin love</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="skimple home">skimple<span class="brand-flower" aria-hidden="true">✳</span></a>
+      <nav aria-label="Main navigation">
+        <a class="nav-link active" href="#">The product shelf</a>
+        <button class="nav-link" data-action="how">How it works <span aria-hidden="true">↗</span></button>
+      </nav>
+      <button class="profile-button" data-action="profile"><span class="profile-face" aria-hidden="true">☺</span><span id="profile-label">My skin profile</span><span aria-hidden="true">↗</span></button>
+    </header>
+    <main id="app"></main>
+    <footer class="site-footer"><a class="brand small" href="#">skimple<span class="brand-flower" aria-hidden="true">✳</span></a><span>Less guesswork. More happy skin.</span><span class="demo-label"><i></i> A little make-believe · Interactive demo</span></footer>
+    <dialog id="modal" aria-labelledby="modal-title"><div id="modal-content"></div></dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "name": "skimple-ui-prototype",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A static, illustrated skincare journey prototype. No backend or AI.",
+  "scripts": {
+    "start": "python3 -m http.server 4173 --bind 127.0.0.1",
+    "test": "node tests/journey.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
