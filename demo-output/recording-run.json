@@ -1,0 +1,38 @@
+{
+  "durationMs": 120754,
+  "analysisRequested": true,
+  "faceUploaded": true,
+  "owned": [
+    "report:demo-neutrogena-1",
+    "demo:cerave",
+    "demo:byoma",
+    "demo:joseon"
+  ],
+  "calls": [
+    "GET /v1/me/reports",
+    "GET /v1/me/saved",
+    "GET /v1/me/skin-profile",
+    "GET /v1/me/owned",
+    "GET /v1/products/search",
+    "POST /v1/scans/from-search",
+    "GET /v1/scans/demo-scan-1",
+    "POST /v1/scans/demo-scan-1/confirm",
+    "POST /v1/analyses",
+    "GET /v1/analyses/demo-analysis-1",
+    "GET /v1/reports/demo-neutrogena-1",
+    "PUT /v1/me/owned/report:demo-neutrogena-1",
+    "PUT /v1/me/skin-profile",
+    "POST /v1/me/skin-photo",
+    "DELETE /v1/me/skin-photo",
+    "PUT /v1/me/skin-profile",
+    "PUT /v1/me/owned/demo:cerave",
+    "GET /v1/products/search",
+    "GET /v1/products/search",
+    "PUT /v1/me/owned/demo:byoma",
+    "GET /v1/products/search",
+    "PUT /v1/me/owned/demo:joseon",
+    "POST /v1/reports/demo-neutrogena-1/chat",
+    "POST /v1/reports/demo-neutrogena-1/chat"
+  ],
+  "errors": []
+}
