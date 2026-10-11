@@ -113,9 +113,12 @@ const fixture = {name:'photo.png',mimeType:'image/png',buffer:tinyPNG};
     assert.equal(await text('h1'),'Happy Skin Cream');
     console.log('PASS real upload previews, face consent, image disposal, text-only storage, full scan-to-report');
 
+    const reportURL=page.url();
     await click('.profile-button');
+    await page.waitForSelector('.skin-sidebar');
     await click('[data-action="forget-profile"]');
     assert.equal(await page.evaluate(()=>localStorage.getItem('skimple.profile')),null);
+    await page.goto(reportURL);
     await click('[data-action="chat"]');
     assert.equal(await page.locator('.chat-monster').count(),1);
     await page.keyboard.press('Escape');

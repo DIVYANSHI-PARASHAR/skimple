@@ -5,7 +5,8 @@
   "description": "A static, illustrated skincare journey prototype. No backend or AI.",
   "scripts": {
     "start": "python3 -m http.server 4173 --bind 127.0.0.1",
-    "test": "node tests/journey.cjs"
+    "test": "node tests/journey.cjs && node tests/profile.cjs",
+    "test:profile": "node tests/profile.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
