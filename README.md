@@ -4,8 +4,8 @@ Skimple combines the illustrated interface with FastAPI, worker, and storage ser
 
 ## Local development
 
-1. Copy `.env.example` to `.env` and set the Gemini, Nimble, S3, PostgreSQL, and Redis values. Set `ALLOWED_ORIGINS` to the address where you open the UI.
-2. Start infrastructure: `docker compose up -d postgres redis minio`. Create the private `skimple-media` bucket in MinIO.
+1. Copy `.env.example` to `.env` and set the Gemini, Nimble, S3, TigerData `DATABASE_URL` (including `sslmode=require`), and Redis values. Set `ALLOWED_ORIGINS` to the address where you open the UI. The API, worker and migrations all require this URL; there is no local database fallback.
+2. Start infrastructure: `docker compose up -d redis minio`. Create the private `skimple-media` bucket in MinIO. PostgreSQL runs in TigerData; the optional Compose `local-postgres` profile is only for explicit offline development.
 3. Install Python dependencies and migrate: `uv sync && uv run alembic upgrade head`.
 4. Start the API: `uv run uvicorn skimple.api:app --reload --app-dir apps/api`.
 5. Start the worker: `uv run rq worker scans analyses --url redis://localhost:6379/0 --with-scheduler --worker-class rq.worker.SimpleWorker`.
@@ -34,4 +34,8 @@ The bundle includes the six original shelf products and four additional products
 
 ## Checks
 
-Run `uv run pytest`, `uv run ruff check apps/api/skimple tests`, and `npm run build`. With the UI server on port 4173 and Playwright Chromium installed, run `npm test` for the live browser journey. API documentation is at `http://localhost:8000/docs`.
+Run `uv run pytest`, `uv run ruff check apps/api/skimple tests`, `uv run ruff format --check apps/api tests`, and `npm run build`. Run `SKIMPLE_TEST_POSTGRES=1 uv run pytest` to exercise the same backend suite on TigerData in a temporary, isolated schema that is removed afterward. An optional `SKIMPLE_TEST_DATABASE_URL` overrides `.env` for that test run. Application tables are never used by tests.
+
+With the UI server on port 4173 and Playwright Chromium installed, run `npm test` for the browser regression journey (API responses are intercepted). See [database cutover and verification](docs/deployment.md#transfer-an-existing-local-database) for data migration. API documentation is at `http://localhost:8000/docs`.
+
+With both API and UI running against the seeded TigerData database, run `SKIMPLE_TEST_LIVE=1 npm run test:connected` for real browser checks of search, formulas, sources, chat, favorites, profiles and owned-product persistence. It creates a fresh anonymous visitor and removes that visitor's data afterward. The UI defaults to `http://localhost:3000`; `BASE_URL` can override it and must be included in `ALLOWED_ORIGINS`.

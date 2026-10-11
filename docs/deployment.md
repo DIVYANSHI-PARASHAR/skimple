@@ -11,6 +11,25 @@
 
 The local Compose file is development infrastructure. Its MinIO bucket must be created once through the console or S3 CLI. Docker Desktop must be running before `docker compose up`.
 
+### Tiger Data connection
+
+Create a Tiger Cloud service with TimescaleDB enabled. For a development or demo database, Shared compute is the free option; check its current storage and feature limits in the console. Copy the service connection string into the ignored `.env` file as `DATABASE_URL`, changing only the `postgres://` prefix to `postgresql+psycopg://` for this project's Psycopg driver. Keep the `sslmode=require` query parameter. In deployment, provide the same value as a secret to both API and worker. Run `uv run alembic upgrade head` to create or update the schema; Alembic reads `DATABASE_URL` from the environment or `.env`.
+
+### Transfer an existing local database
+
+Back up the source with `pg_dump --format=custom` first. Keep backups and credentials outside the repository with private file permissions. Put its `DATABASE_URL` in a separate source environment file; leave the active `.env` pointing to TigerData. Stop API/worker writes during cutover and migrate both databases to the same Alembic revision.
+
+```sh
+uv run alembic upgrade head
+PYTHONPATH=apps/api uv run python -m skimple.transfer --source-env-file /private/path/source.env
+PYTHONPATH=apps/api uv run python -m skimple.transfer --source-env-file /private/path/source.env --apply
+SKIMPLE_TEST_POSTGRES=1 uv run pytest
+```
+
+The default is a dry run that rolls back. `--apply` copies every application table in dependency order in one destination transaction, with a consistent read-only source snapshot. Existing starter ingredients keep their TigerData IDs and synonyms; incoming ingredient references are translated and synonyms are combined. Other existing records must match exactly; conflicting IDs or unique keys abort the entire transfer. Every copied row is compared before commit. Repeating the transfer adds no duplicate records. This command is intended for a small development catalog, not a large production database, and does not copy S3 objects or Redis jobs.
+
+Restart the API and worker after changing `.env`: running processes retain their original database connections. Verify the catalog, product search, profile persistence, saved/owned products and a scan-to-report journey through the running API before retiring the source. Keep the local database and backup for recovery. The Compose PostgreSQL service is opt-in via `--profile local-postgres`; normal startup only needs `redis minio`.
+
 ## Research and review operations
 
 1. Load the starter INCI names with `python -m skimple.ops seed-ingredients db/seeds/ingredients.json`.

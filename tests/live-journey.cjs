@@ -82,6 +82,11 @@ const report = {
     await page.locator('[data-filter="Exfoliants"]').click();
     assert.equal(await page.locator('.product-card').count(),1);
     await page.locator('[data-filter="All products"]').click();
+    await page.locator('#product-search').fill('Squalane');
+    assert.equal(await page.locator('.product-card').count(),1);
+    await page.locator('#product-search').fill('no matching product');
+    assert.equal(await page.locator('.product-card').count(),0);
+    await page.locator('#product-search').fill('');
     await page.locator('a[href="#product/report-report-one"]').click();
     await page.locator('[data-tab="ingredients"]').click();
     assert.match(await page.locator('#report-content').innerText(), /Glycerin can support surface hydration/);
@@ -167,6 +172,17 @@ const report = {
     await retryPage.getByRole('button',{name:'Try again ↗'}).click();
     await retryPage.waitForFunction(() => document.querySelectorAll('.product-card').length === 10);
     await retryPage.close();
-    console.log('PASS 10 sourced catalog products, complete formulas, staged papers, honest review coverage, catalog/report chats, favorites, profile sync, scan-to-report, mobile layout');
+    await page.route('http://localhost:8000/v1/scans/scan-failed', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'FAILED',error_code:'MODEL_UNAVAILABLE'})}));
+    await page.route('http://localhost:8000/v1/scans', route => route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'CREATED'})}));
+    await page.goto(base);
+    await page.locator('[data-action="scan"]').first().click();
+    await page.locator('[data-upload="front"]').setInputFiles(picture);
+    await page.locator('[data-upload="back"]').setInputFiles(picture);
+    await page.locator('[data-action="extract"]').click();
+    await page.locator('.scan-progress').waitFor();
+    await page.locator('.scan-error').waitFor();
+    assert.match(await page.locator('.scan-error').innerText(), /temporarily unavailable/);
+    assert.equal(await page.locator('.upload-zone img').count(), 2);
+    console.log('PASS sourced catalog, complete formulas, staged papers, chats, favorites, profile sync, scan-to-report, failure recovery, mobile layout');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

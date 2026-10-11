@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-    database_url: str = "postgresql+psycopg://skimple:skimple@localhost:5432/skimple"
+    database_url: str
     redis_url: str = "redis://localhost:6379/0"
     s3_endpoint_url: str | None = None
     s3_bucket: str = "skimple-media"
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_image_ttl_hours: int = 24
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-3.8-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     nimble_api_key: str = ""
     openalex_api_key: str = ""
     pubmed_api_key: str = ""

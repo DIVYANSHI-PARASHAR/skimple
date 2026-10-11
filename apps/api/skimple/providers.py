@@ -15,7 +15,13 @@ REVIEW_PROMPT = """Classify only firsthand skincare product experiences explicit
 def gemini_client() -> genai.Client:
     if not settings().gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY is missing")
-    return genai.Client(api_key=settings().gemini_api_key)
+    return genai.Client(
+        api_key=settings().gemini_api_key,
+        http_options=types.HttpOptions(
+            timeout=40_000,
+            retry_options=types.HttpRetryOptions(attempts=1),
+        ),
+    )
 
 
 def extract_product(front: tuple[bytes, str], back: tuple[bytes, str]) -> Extraction:

@@ -2,10 +2,11 @@ import io
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+from google.genai.errors import ClientError
 from PIL import Image
 from skimple import api, jobs
 from skimple.db import SessionLocal, engine
-from skimple.models import Base, OwnedProduct, ProductScan, ProductSentiment, SavedProduct
+from skimple.models import Base, OwnedProduct, ProductScan, ProductSentiment, SavedProduct, User
 from skimple.schemas import Extraction
 from sqlalchemy import select
 
@@ -248,6 +249,36 @@ def test_invalid_image_rejected(monkeypatch):
     assert response.status_code == 422
     with SessionLocal() as db:
         assert db.scalar(select(ProductScan)) is None
+
+
+def test_unavailable_gemini_model_fails_without_retry(monkeypatch):
+    with SessionLocal() as db:
+        user = User(visitor_key_hash="a" * 64)
+        db.add(user)
+        db.flush()
+        scan = ProductScan(
+            user_id=user.id,
+            idempotency_key="model-unavailable",
+            front_key="front",
+            back_key="back",
+        )
+        db.add(scan)
+        db.commit()
+        scan_id = scan.id
+
+    def unavailable(*args):
+        raise ClientError(404, {"error": {"code": 404, "message": "Model unavailable"}})
+
+    monkeypatch.setattr(jobs, "get_image", lambda key: (b"image", "image/png"))
+    monkeypatch.setattr(jobs, "extract_product", unavailable)
+    monkeypatch.setattr(jobs, "get_current_job", lambda: type("Job", (), {"retries_left": 2})())
+
+    jobs.run_extraction(scan_id)
+
+    with SessionLocal() as db:
+        scan = db.get(ProductScan, scan_id)
+        assert scan.status == "FAILED"
+        assert scan.error_code == "MODEL_UNAVAILABLE"
 
 
 def test_anonymous_visitor_key_is_required():
