@@ -1,11 +1,11 @@
 import logging
 import re
-from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import sentry_sdk
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import Json
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -32,7 +32,6 @@ from skimple.models import (
     SkinPhotoAssessment,
     SkinProfile,
     User,
-    uid,
 )
 from skimple.providers import observe_skin, search_products
 from skimple.schemas import (
@@ -264,6 +263,12 @@ def confirm_scan(
 def put_profile(
     body: ProfileRequest, user: User = Depends(current_user), db: Session = Depends(get_db)
 ):
+    profile = save_skin_profile(db, user, body)
+    db.commit()
+    return {"profile_version": profile.version, "derived": profile.derived}
+
+
+def save_skin_profile(db: Session, user: User, body: ProfileRequest) -> SkinProfile:
     profile = db.get(SkinProfile, user.id)
     derived = {
         "basis": "questionnaire",
@@ -275,8 +280,7 @@ def put_profile(
     else:
         profile = SkinProfile(user_id=user.id, questionnaire=body.model_dump(), derived=derived)
         db.add(profile)
-    db.commit()
-    return {"profile_version": profile.version, "derived": derived}
+    return profile
 
 
 @app.get("/v1/me/skin-profile")
@@ -381,6 +385,7 @@ def remove_owned_product(
 def add_skin_photo(
     photo: UploadFile = File(...),
     consent: bool = Form(...),
+    profile: Json[ProfileRequest] | None = Form(None),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
@@ -391,31 +396,41 @@ def add_skin_photo(
     if not consent:
         raise HTTPException(422, "Explicit face-photo consent is required")
     enforce_rate_limit(user.id, "face_photo", 5)
-    raw, mime = validated_image(photo)
-    assessment_id = uid()
-    key = f"face/{user.id}/{assessment_id}"
+    raw, mime = validated_image(photo, normalize=True)
     try:
-        put_image(key, raw, mime)
         with sentry_sdk.start_span(op="gemini.observe_visible_features"):
             observations = observe_skin((raw, mime))
-        assessment = SkinPhotoAssessment(
-            id=assessment_id,
-            user_id=user.id,
-            media_key=key,
-            observations=observations.model_dump(),
-            expires_at=datetime.now(UTC) + timedelta(hours=settings().s3_image_ttl_hours),
-        )
-        db.add(assessment)
-        db.add(Consent(user_id=user.id, scope="face_photo_observation", version="v1", granted=True))
-        db.commit()
     except Exception as exc:
-        db.rollback()
-        delete_image(key)
-        raise HTTPException(503, "Photo assessment unavailable") from exc
+        raise HTTPException(
+            503, "Photo observation is temporarily unavailable. Please try again."
+        ) from exc
+    if observations.image_quality == "unusable" or not observations.observations:
+        raise HTTPException(
+            422,
+            "No reliable visible observations could be extracted. Try a clearer, well-lit face photo.",
+        )
+    existing = db.get(SkinProfile, user.id)
+    context = profile or (
+        ProfileRequest.model_validate(existing.questionnaire)
+        if existing
+        else ProfileRequest(
+            after_cleansing="unsure", daytime_oiliness="unsure", sensitivity="unsure"
+        )
+    )
+    text = f"Photo observations ({observations.image_quality} image quality): " + " ".join(
+        f"{item.description} ({item.confidence} confidence)" for item in observations.observations
+    )
+    if observations.limitations:
+        text += " Limitations: " + " ".join(observations.limitations)
+    context = context.model_copy(update={"photo_observations": text[:1000], "photo_is_demo": False})
+    saved = save_skin_profile(db, user, context)
+    db.add(Consent(user_id=user.id, scope="face_photo_observation", version="v1", granted=True))
+    db.commit()
     return {
-        "assessment_id": assessment.id,
         "observations": observations.model_dump(),
-        "expires_at": assessment.expires_at,
+        "questionnaire": saved.questionnaire,
+        "derived": saved.derived,
+        "media_retained": False,
         "note": "Visible observations only; no diagnosis or skin physiology measurement.",
     }
 
@@ -426,8 +441,16 @@ def delete_skin_photo(user: User = Depends(current_user), db: Session = Depends(
         select(SkinPhotoAssessment).where(SkinPhotoAssessment.user_id == user.id)
     ).all()
     for photo in photos:
-        delete_image(photo.media_key)
+        if photo.media_key:
+            delete_image(photo.media_key)
         db.delete(photo)
+    profile = db.get(SkinProfile, user.id)
+    if profile:
+        profile.questionnaire = {
+            **profile.questionnaire,
+            "photo_observations": "",
+            "photo_is_demo": False,
+        }
     db.add(Consent(user_id=user.id, scope="face_photo_observation", version="v1", granted=False))
     db.commit()
     return {"deleted": len(photos)}
@@ -581,9 +604,18 @@ def answer_about_result(db: Session, user: User, result: dict, question: str) ->
     findings = result.get("ingredient_findings", [])
     reviews = result.get("review_signal", {})
     fit = result.get("compatibility", {})
+    profile = db.get(SkinProfile, user.id)
+    photo_context = (profile.questionnaire.get("photo_observations", "") if profile else "").strip()
     if re.search(r"diagnos|eczema|rosacea|cancer|prescri|allerg|pregnan", question):
         answer = "This report cannot assess a medical condition, pregnancy, or medicine interaction. Please ask a qualified clinician or pharmacist."
         source = "Report scope"
+    elif re.search(r"\b(photo|face|visible|observations?)\b", question):
+        answer = (
+            f"Your saved photo context: {photo_context} These are visible observations only; they do not determine skin type or diagnose a condition."
+            if photo_context
+            else "No photo observations are saved. You can add a face photo with consent, or share your skin preferences in the questionnaire."
+        )
+        source = "Your saved photo context"
     elif re.search(r"ingredient|science|paper|research|evidence", question):
         if findings:
             answer = " ".join(f"{f['ingredient']}: {f['synthesis']}" for f in findings[:3])
@@ -613,13 +645,15 @@ def answer_about_result(db: Session, user: User, result: dict, question: str) ->
             limitations[:2]
         )
         source = "Your questionnaire and report compatibility result"
+        if photo_context:
+            answer += f" Your saved photo context: {photo_context} Photo observations do not determine skin type or product compatibility."
+            source += " + visible photo context"
     else:
         answer = (
             "This report can help with ingredient evidence, permitted review themes, and your skin fit. "
             + " ".join(fit.get("limitations", [])[:2])
         )
         source = "Product report"
-    profile = db.get(SkinProfile, user.id)
     note = (profile.questionnaire.get("notes", "") if profile else "").strip()
     if note and not re.search(r"diagnos|eczema|rosacea|cancer|prescri|allerg|pregnan", question):
         answer += f" Your saved skin note: {note}"

@@ -43,7 +43,7 @@ function skinSidebar() {
       <div class="skin-story-tags">${p.goals.map(goal => `<span class="pill">${escapeHTML(goal)}</span>`).join('')}</div>
       <p>${p.sensitivities?.length && !p.sensitivities.includes('Nothing I know of') ? `Keeping an eye on ${escapeHTML(p.sensitivities.join(', ').toLowerCase())}.` : 'Your preferences, your pace. We’re getting to know your skin together.'}</p>
       ${p.extraContext ? `<div class="skin-extra-note"><span>Your extra little context</span><p>${escapeHTML(p.extraContext)}</p></div>` : ''}
-      ${p.hasPhoto ? `<div class="skin-photo-note">${icon('shield')}Photo discarded. Text context kept.</div>` : ''}
+      ${p.hasPhoto ? `<div class="skin-photo-note">${icon('shield')}Photo discarded. Text context kept.</div><p class="skin-photo-context">${escapeHTML(p.observations || '')}</p>` : ''}
       <button class="secondary full-width" data-action="update-skin">Update my skin profile ↗</button>
     </div>
     <p class="skin-sidebar-note">Skin changes. Your little profile can, too.</p>

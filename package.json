@@ -6,7 +6,8 @@
     "build": "node --check app.js && node --check profile.js && node --check live.js && node --check server.mjs",
     "lint": "npm run build",
     "start": "node server.mjs",
-    "test": "node tests/live-journey.cjs",
+    "test": "node tests/live-journey.cjs && node tests/face-journey.cjs",
+    "test:face": "node tests/face-journey.cjs",
     "test:connected": "node tests/connected-journey.cjs"
   },
   "devDependencies": {"playwright": "1.62.1"}

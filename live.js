@@ -10,6 +10,7 @@ let productSearchTimer;
 let productSearchVersion = 0;
 let ownedSearchTimer;
 let ownedSearchVersion = 0;
+let faceRequest = null;
 
 function visitorKey() {
   const storageKey = 'skimple.visitor-key.v1';
@@ -150,7 +151,7 @@ async function loadLiveData() {
         routine:String(q.routine || '').split(',').map(x => x.trim()).filter(x => x && !['Cleanser','Moisturizer','Sunscreen','Retinoid','Exfoliating acids','Keeping it simple'].includes(x)),
       };
       const fromApi = profileFromApi(q);
-      state.profile = {...fromApi, hasPhoto:fromApi.hasPhoto || state.profile?.hasPhoto || false, observations:fromApi.observations || state.profile?.observations || ''};
+      state.profile = fromApi;
     }
     else if (state.profile) profileSync = request('/v1/me/skin-profile', {method:'PUT', body:JSON.stringify(profileForApi(state.profile))}).catch(error => console.warn('Profile migration failed:', message(error)));
     liveReady = true;
@@ -167,6 +168,7 @@ async function loadLiveData() {
 receiveUpload = function(file, target) {
   if (!validateFile(file)) return;
   if (target === 'face') {
+    state.faceError = null;
     state.faceFile = file;
   } else if (state.scan) {
     state.scan.error = null;
@@ -196,10 +198,15 @@ renderScan = function() {
 
 renderFace = function() {
   original.renderFace();
-  const note = $('.saved-profile', modal);
-  if (note && state.faceUrl !== 'assets/demo-face.svg') note.innerHTML = '<h3>A face photo is a passing hello.</h3><p>With your consent, the image is sent privately for visible observations and kept only for the configured short retention period. It is not a diagnosis.</p>';
+  if (state.faceFile && /\.hei[cf]$/i.test(state.faceFile.name)) {
+    const preview = $('.face-preview', modal);
+    if (preview) preview.outerHTML = `<div class="saved-profile"><h3>${escapeHTML(state.faceFile.name)}</h3><p>HEIC photo selected. We’ll read it when you submit.</p></div>`;
+  }
+  const note = $$('.saved-profile', modal).at(-1);
   const consent = $('.check-label', modal);
   if (consent && state.faceUrl !== 'assets/demo-face.svg') consent.lastChild.textContent = 'I consent to temporary processing for visible observations. I understand this is not a diagnosis.';
+  if (state.faceUrl !== 'assets/demo-face.svg' && note) note.innerHTML = '<h3>A face photo is a passing hello.</h3><p>With your consent, the image is sent privately to extract visible observations. The photo is not stored; only text context is saved with your skin profile.</p>';
+  if (state.faceError) $('#face-form', modal)?.insertAdjacentHTML('afterbegin', `<p class="scan-error" role="alert">${escapeHTML(state.faceError)}</p>`);
 };
 
 renderQuestionnaire = function() {
@@ -212,8 +219,8 @@ renderProfileSummary = function() {
   original.renderProfileSummary();
   const note = $('.privacy-note', modal);
   if (note) note.innerHTML = `${icon('shield')}Your questionnaire is saved with your private visitor key. You can edit or clear it anytime.`;
-  const photo = $('.saved-profile strong', modal);
-  if (photo && state.profile?.hasPhoto && !state.profile.observations?.startsWith('Demo')) photo.textContent = 'Your photo was deleted after observation; only the text shown above remains.';
+  const photo = $('.face-retention-note', modal);
+  if (photo && state.profile?.hasPhoto && !state.profile.observations?.startsWith('Demo')) photo.textContent = 'Your photo was not stored; only the text shown above remains.';
 };
 
 openChat = function() {
@@ -393,21 +400,41 @@ persistProfile = function() {
 };
 
 processFace = async function() {
+  if (state.busy || faceRequest) return;
   if (state.faceUrl === 'assets/demo-face.svg') return original.processFace();
   if (!state.faceFile) { toast('Please choose a face photo first.'); return; }
-  const file = state.faceFile;
-  const body = new FormData(); body.append('photo', file); body.append('consent', 'true');
-  showModal(modalShell(`<div class="progress-view">${monster()}<h2>A little hello, then goodbye.</h2><p>Checking visible details in your photo.</p></div>`));
+  const operation = new AbortController();
+  faceRequest = operation;
+  state.busy = true;
+  state.faceError = null;
+  const draft = {...{feel:[],goals:[],sensitivities:[],routine:[]}, ...state.profile, ...state.profileDraft};
+  const body = new FormData();
+  body.append('photo', state.faceFile);
+  body.append('consent', 'true');
+  body.append('profile', JSON.stringify(profileForApi(draft)));
+  showModal(modalShell(`<div class="progress-view">${monster()}<h2>A little hello, then goodbye.</h2><p role="status">Checking visible details in your photo and saving your text context.</p></div>`));
   try {
-    const result = await request('/v1/me/skin-photo', {method:'POST', body});
-    await request('/v1/me/skin-photo', {method:'DELETE'});
+    await profileSync.catch(() => {});
+    if (faceRequest !== operation || !modal.open) return;
+    const result = await request('/v1/me/skin-photo', {method:'POST', body, signal:operation.signal});
+    if (faceRequest !== operation || !modal.open) return;
+    if (!result.questionnaire?.photo_observations) throw new Error('No reliable photo context was returned. Please try another photo.');
+    state.profile = profileFromApi(result.questionnaire);
+    state.profileDraft = null;
     releaseURL(state.faceUrl); state.faceUrl = null; state.faceFile = null;
-    const observations = list(result.observations?.observations).map(x => x.description).join(' ');
-    state.profile = {...(state.profile || {feel:[],goals:[],sensitivities:[],routine:[]}),hasPhoto:true,observations:observations || 'No reliable visible observations were available.'};
-    persistProfile(); renderProfileSummary();
+    original.persistProfile();
+    renderProfileSummary();
+    profileSync = request('/v1/catalog').then(shelf => {
+      catalog.splice(0, catalog.length, ...list(shelf.products).map(catalogProduct));
+      state.products = [...catalog, ...state.products.filter(p => p.reportId)];
+      route();
+    }).catch(error => console.warn('Profile saved; shelf refresh unavailable:', message(error)));
   } catch (error) {
+    if (faceRequest !== operation || !modal.open || operation.signal.aborted) return;
+    state.faceError = message(error);
     renderFace();
-    toast(message(error));
+  } finally {
+    if (faceRequest === operation) { faceRequest = null; state.busy = false; }
   }
 };
 
@@ -559,6 +586,10 @@ document.addEventListener('click', async event => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
   const action = button.dataset.action;
+  if (['replace-face', 'demo-face', 'edit-profile'].includes(action)) {
+    state.faceError = null;
+    if (action !== 'edit-profile') state.faceFile = null;
+  }
   if (action === 'retry-catalog') {
     event.preventDefault(); event.stopImmediatePropagation();
     await loadLiveData();
@@ -618,4 +649,9 @@ document.addEventListener('submit', event => {
 }, true);
 
 if (location.protocol !== 'file:') loadLiveData();
-modal.addEventListener('close', () => { state.faceFile = null; });
+modal.addEventListener('close', () => {
+  faceRequest?.abort();
+  faceRequest = null;
+  state.faceFile = null;
+  state.faceError = null;
+});
