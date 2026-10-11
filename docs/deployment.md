@@ -11,6 +11,10 @@
 
 The local Compose file is development infrastructure. Its MinIO bucket must be created once through the console or S3 CLI. Docker Desktop must be running before `docker compose up`.
 
+### Tiger Data connection
+
+Create a Tiger Cloud service with TimescaleDB enabled. For a development or demo database, Shared compute is the free option; check its current storage and feature limits in the console. Copy the service connection string into the ignored `.env` file as `DATABASE_URL`, changing only the `postgres://` prefix to `postgresql+psycopg://` for this project's Psycopg driver. Keep the `sslmode=require` query parameter. In deployment, provide the same value as a secret to both API and worker. Run `uv run alembic upgrade head` to create or update the schema; Alembic reads `DATABASE_URL` from the environment or `.env`.
+
 ## Research and review operations
 
 1. Load the starter INCI names with `python -m skimple.ops seed-ingredients db/seeds/ingredients.json`.

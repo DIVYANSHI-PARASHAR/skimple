@@ -111,6 +111,17 @@ const report = {
     assert.deepEqual(errors,[]);
     await page.setViewportSize({width:390,height:844});
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.route('http://localhost:8000/v1/scans/scan-failed', route => route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'FAILED',error_code:'MODEL_UNAVAILABLE'})}));
+    await page.route('http://localhost:8000/v1/scans', route => route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({scan_id:'scan-failed',status:'CREATED'})}));
+    await page.goto(base);
+    await page.locator('[data-action="scan"]').first().click();
+    await page.locator('[data-upload="front"]').setInputFiles(picture);
+    await page.locator('[data-upload="back"]').setInputFiles(picture);
+    await page.locator('[data-action="extract"]').click();
+    await page.locator('.scan-progress').waitFor();
+    await page.locator('.scan-error').waitFor();
+    assert.match(await page.locator('.scan-error').innerText(), /temporarily unavailable/);
+    assert.equal(await page.locator('.upload-zone img').count(), 2);
     console.log('PASS live shelf, report tabs, chat, favorites, profile sync, scan-to-report, mobile layout');
   } finally {await browser.close();}
 })().catch(error => {console.error(error); process.exitCode = 1;});

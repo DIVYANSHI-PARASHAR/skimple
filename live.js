@@ -143,6 +143,7 @@ receiveUpload = function(file, target) {
   if (target === 'face') {
     state.faceFile = file;
   } else if (state.scan) {
+    state.scan.error = null;
     state.scan.files ||= {};
     state.scan.files[target] = file;
   }
@@ -151,6 +152,9 @@ receiveUpload = function(file, target) {
 
 renderScan = function() {
   original.renderScan();
+  if (state.scan?.error) {
+    $('.upload-grid', modal)?.insertAdjacentHTML('beforebegin', `<p class="scan-error" role="alert">${escapeHTML(state.scan.error)}</p>`);
+  }
   const note = $('.privacy-note', modal);
   if (note && !state.scan.demo) note.innerHTML = `${icon('shield')}Product photos are sent privately for label reading and expire from storage.`;
 };
@@ -192,8 +196,17 @@ async function waitForScan(scan) {
   for (let attempt = 0; attempt < 90; attempt++) {
     if (!activeScan(scan)) return null;
     const status = await request(`/v1/scans/${scan.id}`);
+    const progress = $('#scan-progress-message', modal);
+    if (progress) progress.textContent = {
+      CREATED:'Photos received. Starting label reading…',
+      EXTRACTING:'Reading the product and ingredient labels…',
+      IDENTIFYING:'Checking the product details…',
+      RETRYING:'The label reader is trying again…',
+    }[status.status] || 'Reading your label…';
     if (status.status === 'NEEDS_CONFIRMATION') return status;
-    if (status.status === 'FAILED') throw new Error('We could not read the label. Please try clearer photos.');
+    if (status.status === 'FAILED') throw new Error(status.error_code === 'MODEL_UNAVAILABLE'
+      ? 'Label reading is temporarily unavailable. Please try again later.'
+      : 'We could not read the label right now. Please try again.');
     await pause(2000);
   }
   throw new Error('The label is taking longer than expected. Please try again shortly.');
@@ -206,7 +219,8 @@ extractProduct = async function() {
   if (!scan.files?.front || !scan.files?.back) { toast('Please add both front and back photos.'); return; }
   if (state.busy) return;
   state.busy = true;
-  showModal(modalShell(`<div class="progress-view">${monster()}<div class="step-label" style="justify-content:center">Reading your label</div><h2 style="margin-top:12px">Meeting your new product…</h2><p>Reading the photos and checking the ingredient list.<br>You’ll confirm the details next.</p></div>`));
+  scan.error = null;
+  showModal(modalShell(`<div class="progress-view">${monster()}<div class="step-label" style="justify-content:center">Reading your label</div><h2 style="margin-top:12px">Meeting your new product…</h2><p>Reading the photos and checking the ingredient list.<br>You’ll confirm the details next.</p><div class="scan-progress current" role="status" aria-live="polite"><span class="progress-dot" aria-hidden="true"></span><span id="scan-progress-message">Uploading your photos…</span></div></div>`));
   try {
     const body = new FormData();
     body.append('front', scan.files.front);
@@ -219,7 +233,7 @@ extractProduct = async function() {
       renderConfirmation();
     }
   } catch (error) {
-    if (activeScan(scan)) { renderScan(); toast(message(error)); }
+    if (activeScan(scan)) { scan.error = message(error); renderScan(); }
   } finally { state.busy = false; }
 };
 

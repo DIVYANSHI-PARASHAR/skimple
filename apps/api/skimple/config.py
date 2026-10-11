@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     s3_region: str = "us-east-1"
     s3_image_ttl_hours: int = 24
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    gemini_model: str = "gemini-3.5-flash-lite"
     nimble_api_key: str = ""
     openalex_api_key: str = ""
     pubmed_api_key: str = ""

@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from urllib.parse import urlparse
 
 import sentry_sdk
+from google.genai.errors import ClientError
 from redis import Redis
 from rq import Queue, Retry, get_current_job
 from sqlalchemy import delete, select
@@ -47,9 +48,9 @@ def enqueue(queue: str, function, identifier: str) -> None:
     Queue(queue, connection=Redis.from_url(settings().redis_url)).enqueue(
         function,
         identifier,
-        job_id=f"{queue}:{identifier}",
+        job_id=f"{queue}_{identifier}",
         job_timeout=180,
-        retry=Retry(max=2, interval=[30, 120]),
+        retry=Retry(max=2, interval=[10, 20]),
         result_ttl=3600,
         failure_ttl=86400,
     )
@@ -92,13 +93,14 @@ def _run_extraction(scan_id: str) -> None:
                 }
             scan.status = "NEEDS_CONFIRMATION"
             db.commit()
-        except Exception:
+        except Exception as exc:
             log.exception("Extraction failed for scan %s", scan_id)
             job = get_current_job()
-            scan.status = "RETRYING" if job and job.retries_left else "FAILED"
-            scan.error_code = "EXTRACTION_UNAVAILABLE"
+            model_unavailable = isinstance(exc, ClientError) and exc.code == 404
+            scan.status = "RETRYING" if job and job.retries_left and not model_unavailable else "FAILED"
+            scan.error_code = "MODEL_UNAVAILABLE" if model_unavailable else "EXTRACTION_UNAVAILABLE"
             db.commit()
-            if job:
+            if job and not model_unavailable:
                 raise
 
 
