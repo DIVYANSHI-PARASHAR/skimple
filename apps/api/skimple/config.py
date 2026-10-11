@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     openalex_api_key: str = ""
     pubmed_api_key: str = ""
     sentry_dsn: str = ""
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173"
     review_allowed_domains: str = ""
     enable_face_photo: bool = False
 

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from skimple import api, jobs
 from skimple.db import SessionLocal, engine
-from skimple.models import Base, ProductScan, ProductSentiment
+from skimple.models import Base, ProductScan, ProductSentiment, SavedProduct
 from skimple.schemas import Extraction
 from sqlalchemy import select
 
@@ -138,6 +138,26 @@ def test_scan_confirmation_and_private_report(monkeypatch):
         ).status_code
         == 404
     )
+    listed = client.get("/v1/me/reports", headers=visitor).json()["reports"]
+    assert listed[0]["report_id"] == state["report_id"]
+    assert listed[0]["product_name"] == "Daily Cream"
+    assert client.get("/v1/me/reports", headers={"X-Visitor-Key": "b" * 64}).json() == {"reports": []}
+    saved_key = f"report:{state['report_id']}"
+    assert client.put(f"/v1/me/saved/{saved_key}", headers=visitor).status_code == 200
+    assert saved_key in client.get("/v1/me/saved", headers=visitor).json()["product_keys"]
+    assert client.put(f"/v1/me/saved/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code == 404
+    reply = client.post(
+        f"/v1/reports/{state['report_id']}/chat",
+        headers=visitor,
+        json={"question": "What do the ingredients say?"},
+    )
+    assert reply.status_code == 200
+    assert "no reviewed" in reply.json()["answer"].lower()
+    assert client.post(
+        f"/v1/reports/{state['report_id']}/chat",
+        headers={"X-Visitor-Key": "b" * 64},
+        json={"question": "Tell me about it"},
+    ).status_code == 404
 
     def unavailable(*args):
         raise RuntimeError("Nimble temporarily unavailable")
@@ -169,10 +189,13 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     assert partial_state["status"] == "PARTIAL"
     partial_report = client.get(f"/v1/reports/{partial_state['report_id']}", headers=visitor).json()
     assert "could not be retrieved" in partial_report["compatibility"]["limitations"][-1]
+    assert client.delete("/v1/me/skin-profile", headers=visitor).json()["deleted"] is True
+    assert client.get("/v1/me/skin-profile", headers=visitor).json()["questionnaire"] is None
     assert client.delete("/v1/me/data", headers=visitor).json()["deleted"] is True
     assert not stored
     with SessionLocal() as db:
         assert db.scalar(select(ProductScan).where(ProductScan.id == scan_id)) is None
+        assert db.scalar(select(SavedProduct).where(SavedProduct.product_key == saved_key)) is None
 
 
 def test_invalid_image_rejected(monkeypatch):

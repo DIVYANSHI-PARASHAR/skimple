@@ -58,6 +58,13 @@ class SkinProfile(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
 
+class SavedProduct(Base):
+    __tablename__ = "saved_products"
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    product_key: Mapped[str] = mapped_column(String(120), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class SkinPhotoAssessment(Base):
     __tablename__ = "skin_photo_assessments"
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)

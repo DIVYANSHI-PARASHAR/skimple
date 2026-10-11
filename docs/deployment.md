@@ -2,7 +2,7 @@
 
 ## Services
 
-- Frontend: Next.js on Vercel or the provided web container. For local development, the web app loads the root `.env`. For deployment, build with the `NEXT_PUBLIC_*` variables in `.env.example`; public variables are baked into the bundle. The browser creates a random visitor key and keeps it in local storage, so there is no sign-in setup.
+- Frontend: the illustrated UI from `ui` is served by the provided Node web container. Set `PUBLIC_API_URL` to the browser-reachable API URL and allow the web origin through `ALLOWED_ORIGINS`. The browser creates a random visitor key and keeps it in local storage, so there is no sign-in setup.
 - API: deploy `infra/Dockerfile.python` with its default command. Set all non-public values from `.env.example` as secrets. Requests include the anonymous `X-Visitor-Key` header to keep scans and reports separate between browsers.
 - Worker: deploy the same Python image with command `rq worker scans analyses --url "$REDIS_URL" --with-scheduler`. Run one or more independently of API traffic.
 - Database: use TigerData PostgreSQL. Run `alembic upgrade head` before a new API release. No analytics warehouse is required.
