@@ -1,6 +1,6 @@
 # Skimple
 
-Skimple combines the illustrated `ui` branch with the FastAPI, worker, and storage services from `main`. The original UI stylesheet and prototype script are kept byte for byte. `live.js` connects its controls to the API and renders live report data in the same layout.
+Skimple combines the illustrated `ui-newpage` branch with the FastAPI, worker, and storage services from `main`. The new page's `app.js`, `profile.js`, `profile.css`, and `index.html` are copied without changes from that branch. `live.js` connects their controls to the API and renders live report data in the same layout.
 
 ## Local development
 
@@ -11,13 +11,13 @@ Skimple combines the illustrated `ui` branch with the FastAPI, worker, and stora
 5. Start the worker: `uv run rq worker scans analyses --url redis://localhost:6379/0 --with-scheduler --worker-class rq.worker.SimpleWorker`.
 6. Start the UI: `npm install && npm run dev`. Open `http://localhost:3000`.
 
-The UI server reads `PUBLIC_API_URL` from its environment; it defaults to `http://localhost:8000`. The six illustrated shelf products are interactive samples. Scans made with real product photos use the API for extraction, confirmation, review processing, analysis, reports, and report-grounded chat. Saved products and questionnaire answers sync to the anonymous visitor record. Face-photo observation remains subject to `ENABLE_FACE_PHOTO`; when disabled, the UI reports that the pilot is unavailable rather than inventing an observation.
+The UI server reads `PUBLIC_API_URL` from its environment; it defaults to `http://localhost:8000`. The six illustrated shelf products are interactive samples. Scans made with real product photos use the API for extraction, confirmation, review processing, analysis, reports, and report-grounded chat. Bookmarks, the separate "My products" shelf, and questionnaire answers (including extra context and any photo observation text) sync to the anonymous visitor record. The AM/PM routine and watch-outs use those saved answers and products. Face-photo observation remains subject to `ENABLE_FACE_PHOTO`; when disabled, the UI reports that the pilot is unavailable rather than inventing an observation. When enabled, the profile page deletes the uploaded photo after receiving its text observations.
 
 ## Data and evidence
 
 Product photos are uploaded privately for extraction and expire under the configured media retention. The backend only publishes ingredient findings linked to reviewed claims and papers. Review themes only include sources with recorded use permission; missing coverage is shown explicitly. The UI's sample product research and demo face remain labeled examples.
 
-Each browser has an anonymous visitor key in local storage. Clearing it loses access to saved reports and favorites. The API also provides `DELETE /v1/me/data` for complete visitor data removal. See [deployment notes](docs/deployment.md) for research curation and privacy operations.
+Each browser has an anonymous visitor key in local storage. Clearing it loses access to saved reports, favorites, and the "My products" shelf. The API also provides `DELETE /v1/me/data` for complete visitor data removal. See [deployment notes](docs/deployment.md) for research curation and privacy operations.
 
 ## Checks
 

@@ -16,6 +16,8 @@ const report = {
     const page = await browser.newPage({viewport:{width:1440,height:900},reducedMotion:'reduce'});
     const errors = [];
     const calls = [];
+    const ownedKeys = new Set();
+    let profilePayload;
     page.on('pageerror', error => errors.push(error.message));
     await page.route('http://localhost:8000/**', async route => {
       const request = route.request();
@@ -25,7 +27,11 @@ const report = {
       let status = 200;
       if (path === '/v1/me/reports') body = {reports:[{report_id:'report-one',brand:'Acme',product_name:'Daily Lotion',category:'moisturizer',variant:'',raw_ingredient_text:'Aqua, Glycerin',result:report}]};
       else if (path === '/v1/me/saved') body = {product_keys:[]};
-      else if (path === '/v1/me/skin-profile' && request.method() === 'GET') body = {questionnaire:null,derived:null};
+      else if (path === '/v1/me/owned' && request.method() === 'GET') body = {product_keys:[...ownedKeys]};
+      else if (path.startsWith('/v1/me/owned/') && request.method() === 'PUT') {ownedKeys.add(decodeURIComponent(path.slice('/v1/me/owned/'.length)));body = {owned:true};}
+      else if (path.startsWith('/v1/me/owned/') && request.method() === 'DELETE') {ownedKeys.delete(decodeURIComponent(path.slice('/v1/me/owned/'.length)));body = {owned:false};}
+      else if (path === '/v1/me/skin-profile' && request.method() === 'GET') body = {questionnaire:profilePayload || null,derived:null};
+      else if (path === '/v1/me/skin-profile' && request.method() === 'PUT') {profilePayload = request.postDataJSON();body = {profile_version:'v1',derived:{basis:'questionnaire'}};}
       else if (path === '/v1/scans' && request.method() === 'POST') body = {scan_id:'scan-one',status:'CREATED'};
       else if (path === '/v1/scans/scan-one' && request.method() === 'GET') body = {scan_id:'scan-one',status:'NEEDS_CONFIRMATION',extraction:{brand:'Sample',product_name:'Fresh Gel',variant:'',raw_ingredient_text:'Aqua, Glycerin',ingredients_in_order:['Aqua','Glycerin']}};
       else if (path === '/v1/analyses' && request.method() === 'POST') body = {analysis_id:'analysis-one',status:'CREATED',report_id:null};
@@ -54,13 +60,43 @@ const report = {
     await page.locator('[data-action="save"][data-id="report-report-one"]').click();
     await page.waitForFunction(() => document.querySelector('[data-action="save"][data-id="report-report-one"]').getAttribute('aria-pressed') === 'true');
     assert.ok(calls.includes('PUT /v1/me/saved/report:report-one'));
-    await page.locator('[data-action="profile"]').first().click();
+    await page.locator('.profile-button').click();
+    await page.waitForSelector('#skin-page-form');
     await page.locator('input[name="feel"][value="Combination"] + span').click();
     await page.locator('input[name="goals"][value="Hydration"] + span').click();
-    await page.locator('#skin-form button[type="submit"]').click();
+    await page.locator('#page-extra-context').fill('I like a soft finish.');
+    await page.locator('#skin-page-form button[type="submit"]').click();
     await page.waitForFunction(() => !document.querySelector('dialog').open);
     assert.ok(calls.includes('PUT /v1/me/skin-profile'));
-    await page.locator('.back-link').click();
+    assert.equal(profilePayload.notes, 'I like a soft finish.');
+    await page.waitForSelector('#my-products');
+    assert.match(await page.locator('.skin-extra-note').innerText(), /soft finish/);
+    await page.locator('.add-product-tile').click();
+    await page.locator('#owned-search').fill('Acme');
+    await page.locator('.lookup-option[data-id="report-report-one"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.owned-product').length === 1);
+    assert.ok(calls.includes('PUT /v1/me/owned/report:report-one'));
+    for (const width of [320,390,768,1440]) {
+      await page.setViewportSize({width,height:844});
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `skin page overflow at ${width}`);
+    }
+    profilePayload = {...profilePayload, dry_areas:['Cheeks'], daytime_oiliness:'high', known_reactions:['Linalool'], goals:[...profilePayload.goals, 'texture']};
+    await page.evaluate(() => {localStorage.removeItem('skimple.profile');localStorage.removeItem('skimple.owned');});
+    await page.reload();
+    await page.waitForFunction(() => document.querySelectorAll('.owned-product').length === 1);
+    assert.match(await page.locator('.skin-extra-note').innerText(), /soft finish/);
+    await page.locator('.skin-sidebar [data-action="update-skin"]').click();
+    const updatedProfile = page.waitForResponse(response => response.url().endsWith('/v1/me/skin-profile') && response.request().method() === 'PUT');
+    await page.locator('#skin-form button[type="submit"]').click();
+    await updatedProfile;
+    assert.deepEqual(profilePayload.dry_areas, ['Cheeks']);
+    assert.deepEqual(profilePayload.known_reactions, ['Linalool']);
+    assert.ok(profilePayload.goals.includes('texture'));
+    assert.equal(profilePayload.daytime_oiliness, 'high');
+    await page.locator('[data-action="remove-owned"][data-id="report-report-one"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.owned-product').length === 0);
+    assert.ok(calls.includes('DELETE /v1/me/owned/report:report-one'));
+    await page.locator('.header-back').click();
     await page.locator('[data-action="scan"]').first().click();
     await page.locator('[data-upload="front"]').setInputFiles(picture);
     await page.locator('[data-upload="back"]').setInputFiles(picture);

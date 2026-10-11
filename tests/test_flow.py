@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 from skimple import api, jobs
 from skimple.db import SessionLocal, engine
-from skimple.models import Base, ProductScan, ProductSentiment, SavedProduct
+from skimple.models import Base, OwnedProduct, ProductScan, ProductSentiment, SavedProduct
 from skimple.schemas import Extraction
 from sqlalchemy import select
 
@@ -106,11 +106,19 @@ def test_scan_confirmation_and_private_report(monkeypatch):
                 "daytime_oiliness": "none",
                 "sensitivity": "high",
                 "known_reactions": ["Glycerin"],
-                "goals": ["hydration"],
+                "reported_sensitivities": ["Fragrance"],
+                "goals": ["hydration", "sun_protection"],
+                "notes": "I prefer lightweight textures.",
+                "photo_observations": "Visible shine observed.",
             },
         ).status_code
         == 200
     )
+    saved_profile = client.get("/v1/me/skin-profile", headers=visitor).json()["questionnaire"]
+    assert saved_profile["notes"] == "I prefer lightweight textures."
+    assert saved_profile["reported_sensitivities"] == ["Fragrance"]
+    assert "sun_protection" in saved_profile["goals"]
+    assert saved_profile["photo_observations"] == "Visible shine observed."
     analysis = client.post(
         "/v1/analyses",
         headers={**visitor, "Idempotency-Key": "analysis-request-1"},
@@ -146,6 +154,17 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     assert client.put(f"/v1/me/saved/{saved_key}", headers=visitor).status_code == 200
     assert saved_key in client.get("/v1/me/saved", headers=visitor).json()["product_keys"]
     assert client.put(f"/v1/me/saved/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code == 404
+    assert client.get("/v1/me/owned", headers=visitor).json() == {"product_keys": []}
+    assert client.put("/v1/me/owned/demo:byoma", headers=visitor).status_code == 200
+    assert client.put(f"/v1/me/owned/{saved_key}", headers=visitor).status_code == 200
+    assert client.put(f"/v1/me/owned/{saved_key}", headers=visitor).status_code == 200
+    assert set(client.get("/v1/me/owned", headers=visitor).json()["product_keys"]) == {
+        "demo:byoma", saved_key
+    }
+    assert client.put(f"/v1/me/owned/{saved_key}", headers={"X-Visitor-Key": "b" * 64}).status_code == 404
+    assert client.get("/v1/me/owned", headers={"X-Visitor-Key": "b" * 64}).json() == {"product_keys": []}
+    assert client.delete("/v1/me/owned/demo:byoma", headers=visitor).json() == {"owned": False}
+    assert client.get("/v1/me/saved", headers=visitor).json()["product_keys"] == [saved_key]
     reply = client.post(
         f"/v1/reports/{state['report_id']}/chat",
         headers=visitor,
@@ -153,6 +172,7 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     )
     assert reply.status_code == 200
     assert "no reviewed" in reply.json()["answer"].lower()
+    assert "lightweight textures" in reply.json()["answer"]
     assert client.post(
         f"/v1/reports/{state['report_id']}/chat",
         headers={"X-Visitor-Key": "b" * 64},
@@ -196,6 +216,7 @@ def test_scan_confirmation_and_private_report(monkeypatch):
     with SessionLocal() as db:
         assert db.scalar(select(ProductScan).where(ProductScan.id == scan_id)) is None
         assert db.scalar(select(SavedProduct).where(SavedProduct.product_key == saved_key)) is None
+        assert db.scalar(select(OwnedProduct).where(OwnedProduct.product_key == saved_key)) is None
 
 
 def test_invalid_image_rejected(monkeypatch):

@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "node server.mjs",
-    "build": "node --check app.js && node --check live.js && node --check server.mjs",
+    "build": "node --check app.js && node --check profile.js && node --check live.js && node --check server.mjs",
     "lint": "npm run build",
     "start": "node server.mjs",
     "test": "node tests/live-journey.cjs"

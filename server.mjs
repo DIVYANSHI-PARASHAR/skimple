@@ -10,7 +10,7 @@ const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript; charse
 createServer(async (request, response) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
   const file = pathname === '/' ? 'index.html' : normalize(pathname).replace(/^\/+/, '');
-  if (!['index.html','app.js','live.js','styles.css'].includes(file) && !/^assets\/[a-z0-9-]+\.svg$/.test(file)) {
+  if (!['index.html','app.js','live.js','profile.js','styles.css','profile.css'].includes(file) && !/^assets\/[a-z0-9-]+\.svg$/.test(file)) {
     response.writeHead(404); response.end('Not found'); return;
   }
   try {

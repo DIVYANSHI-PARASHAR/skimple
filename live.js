@@ -1,10 +1,11 @@
-/* Connect the unchanged illustrated UI to Skimple's API. The six original shelf items remain demos. */
+/* Connect the illustrated UI to Skimple's API. The six original shelf items remain demos. */
 'use strict';
 
 const apiBase = window.SKIMPLE_API_URL || 'http://localhost:8000';
-const original = {receiveUpload, productCard, renderScan, renderFace, renderQuestionnaire, renderProfileSummary, openChat, renderDetail, renderReportTab, renderConfirmation, startAnalysis, saveProfile, processFace, sendChat, showHow};
+const original = {receiveUpload, productCard, renderScan, renderFace, renderQuestionnaire, renderProfileSummary, openChat, renderDetail, renderReportTab, renderConfirmation, startAnalysis, saveProfile, persistProfile, processFace, sendChat, showHow};
 let profileSync = Promise.resolve();
 let liveReady = false;
+let advancedProfile = {knownReactions:[], dryAreas:[], oilyAreas:[], daytimeOiliness:null, sensitivity:null, goals:[], routine:[]};
 
 function visitorKey() {
   const storageKey = 'skimple.visitor-key.v1';
@@ -40,6 +41,8 @@ const safeLink = url => /^https?:\/\//i.test(url || '') ? escapeHTML(url) : '#';
 const list = value => Array.isArray(value) ? value : [];
 const message = error => error instanceof Error ? error.message : String(error);
 function isLive(p) { return !!p?.reportId; }
+const productKey = id => id.startsWith('report-') ? `report:${id.slice(7)}` : `demo:${id}`;
+const productId = key => key.startsWith('report:') ? `report-${key.slice(7)}` : key.slice(5);
 
 productCard = function(p, index) {
   const card = original.productCard(p, index);
@@ -49,21 +52,24 @@ productCard = function(p, index) {
 function profileForApi(p) {
   const feel = p.feel?.[0] || 'Not sure';
   const after = {'Dry & tight':'tight',Oily:'oily',Combination:'varies',Comfortable:'comfortable','Not sure':'unsure'}[feel] || 'unsure';
-  const goals = [...new Set(list(p.goals).map(x => ({Hydration:'hydration',Blemishes:'blemishes','Uneven tone':'tone','Barrier support':'barrier','Sun protection':'other'}[x])).filter(Boolean))];
+  const goals = [...new Set([...list(p.goals).map(x => ({Hydration:'hydration',Blemishes:'blemishes','Uneven tone':'tone','Barrier support':'barrier','Sun protection':'sun_protection'}[x])).filter(Boolean), ...advancedProfile.goals])];
   return {
     after_cleansing: after,
-    daytime_oiliness: feel === 'Oily' ? 'high' : feel === 'Combination' ? 'some' : feel === 'Not sure' ? 'unsure' : 'none',
-    dry_areas: [], oily_areas: [],
-    sensitivity: list(p.sensitivities).some(x => x !== 'Nothing I know of') ? 'medium' : 'unsure',
-    known_reactions: list(p.sensitivities).filter(x => x !== 'Nothing I know of'),
-    goals, routine: list(p.routine).join(', '), notes: '',
+    daytime_oiliness: advancedProfile.daytimeOiliness || (feel === 'Oily' ? 'high' : feel === 'Combination' ? 'some' : feel === 'Not sure' ? 'unsure' : 'none'),
+    dry_areas: advancedProfile.dryAreas, oily_areas: advancedProfile.oilyAreas,
+    sensitivity: advancedProfile.sensitivity || (list(p.sensitivities).some(x => x !== 'Nothing I know of') ? 'medium' : 'unsure'),
+    known_reactions: advancedProfile.knownReactions,
+    reported_sensitivities: list(p.sensitivities).filter(x => x !== 'Nothing I know of'),
+    goals, routine: [...new Set([...list(p.routine), ...advancedProfile.routine])].join(', '), notes: String(p.extraContext || '').slice(0, 1500),
+    photo_observations: p.hasPhoto ? String(p.observations || '').slice(0, 1000) : '',
+    photo_is_demo: Boolean(p.hasPhoto && p.observations?.startsWith('Demo')),
   };
 }
 
 function profileFromApi(q) {
   const feel = {tight:'Dry & tight',oily:'Oily',varies:'Combination',comfortable:'Comfortable',unsure:'Not sure'}[q.after_cleansing] || 'Not sure';
-  const goals = list(q.goals).map(x => ({hydration:'Hydration',blemishes:'Blemishes',tone:'Uneven tone',barrier:'Barrier support',other:'Sun protection'}[x])).filter(Boolean);
-  return {feel:[feel], goals, sensitivities:list(q.known_reactions), routine:q.routine ? q.routine.split(',').map(x => x.trim()).filter(Boolean) : [], hasPhoto:false, observations:''};
+  const goals = list(q.goals).map(x => ({hydration:'Hydration',blemishes:'Blemishes',tone:'Uneven tone',barrier:'Barrier support',sun_protection:'Sun protection'}[x])).filter(Boolean);
+  return {feel:[feel], goals, sensitivities:list(q.reported_sensitivities || q.known_reactions), routine:q.routine ? q.routine.split(',').map(x => x.trim()).filter(Boolean) : [], extraContext:q.notes || '', hasPhoto:Boolean(q.photo_observations), observations:q.photo_observations || ''};
 }
 
 function reportProduct(row) {
@@ -91,8 +97,8 @@ function reportProduct(row) {
 
 async function loadLiveData() {
   try {
-    const [reports, saved, profile] = await Promise.all([
-      request('/v1/me/reports'), request('/v1/me/saved'), request('/v1/me/skin-profile'),
+    const [reports, saved, profile, ownedProducts] = await Promise.all([
+      request('/v1/me/reports'), request('/v1/me/saved'), request('/v1/me/skin-profile'), request('/v1/me/owned'),
     ]);
     const live = list(reports.reports).map(reportProduct);
     state.products = [...catalog, ...state.products.filter(p => p.id.startsWith('demo-')), ...live];
@@ -105,7 +111,24 @@ async function loadLiveData() {
       }
     }
     state.saved = remoteSaved;
-    if (profile.questionnaire) state.profile = profileFromApi(profile.questionnaire);
+    const remoteOwned = new Set(list(ownedProducts.product_keys).map(productId));
+    for (const id of state.owned) {
+      if (remoteOwned.has(id) || !state.products.some(p => p.id === id)) continue;
+      remoteOwned.add(id);
+      void request(`/v1/me/owned/${productKey(id)}`, {method:'PUT'}).catch(error => console.warn('Owned product migration failed:', message(error)));
+    }
+    state.owned = remoteOwned;
+    persistOwnedProducts();
+    if (profile.questionnaire) {
+      const q = profile.questionnaire;
+      advancedProfile = {
+        knownReactions:list(q.known_reactions), dryAreas:list(q.dry_areas), oilyAreas:list(q.oily_areas), daytimeOiliness:q.daytime_oiliness || null,
+        sensitivity:q.sensitivity || null, goals:list(q.goals).filter(goal => !['hydration','blemishes','tone','barrier','sun_protection'].includes(goal)),
+        routine:String(q.routine || '').split(',').map(x => x.trim()).filter(x => x && !['Cleanser','Moisturizer','Sunscreen','Retinoid','Exfoliating acids','Keeping it simple'].includes(x)),
+      };
+      const fromApi = profileFromApi(q);
+      state.profile = {...fromApi, hasPhoto:fromApi.hasPhoto || state.profile?.hasPhoto || false, observations:fromApi.observations || state.profile?.observations || ''};
+    }
     else if (state.profile) profileSync = request('/v1/me/skin-profile', {method:'PUT', body:JSON.stringify(profileForApi(state.profile))}).catch(error => console.warn('Profile migration failed:', message(error)));
     liveReady = true;
     route();
@@ -151,7 +174,7 @@ renderProfileSummary = function() {
   const note = $('.privacy-note', modal);
   if (note) note.innerHTML = `${icon('shield')}Your questionnaire is saved with your private visitor key. You can edit or clear it anytime.`;
   const photo = $('.saved-profile strong', modal);
-  if (photo && state.profile?.hasPhoto && !state.profile.observations?.startsWith('Demo')) photo.textContent = 'Your photo is retained privately for a limited time; observations are shown above.';
+  if (photo && state.profile?.hasPhoto && !state.profile.observations?.startsWith('Demo')) photo.textContent = 'Your photo was deleted after observation; only the text shown above remains.';
 };
 
 openChat = function() {
@@ -252,10 +275,11 @@ startAnalysis = async function(data) {
   } finally { state.busy = false; }
 };
 
-saveProfile = function(form) {
-  original.saveProfile(form);
+persistProfile = function() {
+  original.persistProfile();
   if (state.profile) profileSync = request('/v1/me/skin-profile', {method:'PUT', body:JSON.stringify(profileForApi(state.profile))})
     .catch(error => { toast(`Skin profile could not sync: ${message(error)}`); throw error; });
+  void profileSync.catch(() => {});
 };
 
 processFace = async function() {
@@ -266,6 +290,7 @@ processFace = async function() {
   showModal(modalShell(`<div class="progress-view">${monster()}<h2>A little hello, then goodbye.</h2><p>Checking visible details in your photo.</p></div>`));
   try {
     const result = await request('/v1/me/skin-photo', {method:'POST', body});
+    await request('/v1/me/skin-photo', {method:'DELETE'});
     releaseURL(state.faceUrl); state.faceUrl = null; state.faceFile = null;
     const observations = list(result.observations?.observations).map(x => x.description).join(' ');
     state.profile = {...(state.profile || {feel:[],goals:[],sensitivities:[],routine:[]}),hasPhoto:true,observations:observations || 'No reliable visible observations were available.'};
@@ -336,6 +361,24 @@ showHow = function() {
 document.addEventListener('click', async event => {
   const button = event.target.closest('[data-action]');
   if (!button) return;
+  const action = button.dataset.action;
+  if (['select-owned', 'remove-owned', 'toggle-owned'].includes(action)) {
+    event.preventDefault(); event.stopImmediatePropagation();
+    const id = button.dataset.id;
+    if (!state.products.some(p => p.id === id)) return;
+    const removing = action === 'remove-owned' || (action === 'toggle-owned' && state.owned.has(id));
+    try {
+      await request(`/v1/me/owned/${productKey(id)}`, {method:removing ? 'DELETE' : 'PUT'});
+      if (removing) {
+        state.owned.delete(id);
+        persistOwnedProducts();
+        if (location.hash === '#skin') renderPersonalSections();
+        else if (state.currentProduct) renderDetail(state.currentProduct);
+        toast('Removed from your products. Your research stays on the main shelf.');
+      } else addOwnedProduct(id);
+    } catch (error) { toast(`My products could not sync: ${message(error)}`); }
+    return;
+  }
   if (button.dataset.action === 'save') {
     const id = button.dataset.id;
     const key = id.startsWith('report-') ? `report:${id.slice(7)}` : `demo:${id}`;
@@ -344,7 +387,7 @@ document.addEventListener('click', async event => {
     catch (error) { toast(`Favorite could not sync: ${message(error)}`); }
   }
   if (button.dataset.action === 'forget-profile') {
-    try { await request('/v1/me/skin-profile', {method:'DELETE'}); }
+    try { await request('/v1/me/skin-profile', {method:'DELETE'}); advancedProfile = {knownReactions:[], dryAreas:[], oilyAreas:[], daytimeOiliness:null, sensitivity:null, goals:[], routine:[]}; }
     catch (error) { toast(`Profile could not be cleared from the service: ${message(error)}`); }
     try { await request('/v1/me/skin-photo', {method:'DELETE'}); }
     catch { /* The face-photo pilot may be disabled. */ }

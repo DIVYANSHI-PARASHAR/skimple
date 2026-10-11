@@ -21,6 +21,7 @@ from skimple.models import (
     Feedback,
     FormulationIngredient,
     Ingredient,
+    OwnedProduct,
     Product,
     ProductFormulation,
     ProductScan,
@@ -273,6 +274,34 @@ def unsave_product(product_key: str, user: User = Depends(current_user), db: Ses
     return {"saved": False}
 
 
+@app.get("/v1/me/owned")
+def get_owned_products(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return {"product_keys": db.scalars(
+        select(OwnedProduct.product_key).where(OwnedProduct.user_id == user.id)
+    ).all()}
+
+
+@app.put("/v1/me/owned/{product_key}")
+def add_owned_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    product_key = valid_product_key(product_key)
+    if product_key.startswith("report:"):
+        owned(db, Report, product_key.removeprefix("report:"), user)
+    if not db.get(OwnedProduct, (user.id, product_key)):
+        db.add(OwnedProduct(user_id=user.id, product_key=product_key))
+        db.commit()
+    return {"owned": True}
+
+
+@app.delete("/v1/me/owned/{product_key}")
+def remove_owned_product(product_key: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    product_key = valid_product_key(product_key)
+    db.execute(delete(OwnedProduct).where(
+        OwnedProduct.user_id == user.id, OwnedProduct.product_key == product_key
+    ))
+    db.commit()
+    return {"owned": False}
+
+
 @app.post("/v1/me/skin-photo")
 def add_skin_photo(
     photo: UploadFile = File(...),
@@ -461,6 +490,11 @@ def chat_about_report(
     else:
         answer = "This report can help with ingredient evidence, permitted review themes, and your skin fit. " + " ".join(fit.get("limitations", [])[:2])
         source = "Product report"
+    profile = db.get(SkinProfile, user.id)
+    note = (profile.questionnaire.get("notes", "") if profile else "").strip()
+    if note and not re.search(r"diagnos|eczema|rosacea|cancer|prescri|allerg|pregnan", question):
+        answer += f" Your saved skin note: {note}"
+        source += " + your saved skin note"
     return {"answer": answer, "source": source}
 
 
@@ -501,6 +535,7 @@ def delete_me(user: User = Depends(current_user), db: Session = Depends(get_db))
     for model in (
         Feedback,
         SavedProduct,
+        OwnedProduct,
         Report,
         AnalysisRun,
         ProductScan,

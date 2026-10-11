@@ -46,7 +46,8 @@ const savedProfile = readStorage('skimple.profile', null);
 const safeProfile = savedProfile && typeof savedProfile === 'object' && Array.isArray(savedProfile.goals) ? savedProfile : null;
 const storedProducts = readStorage('skimple.products', []);
 const savedIds = readStorage('skimple.saved', []);
-const state = {products:[...catalog,...(Array.isArray(storedProducts) ? storedProducts.filter(p => p && typeof p.id === 'string' && p.id.startsWith('demo-') && typeof p.name === 'string').map(p=>({...catalog[0],...p,asset:'byoma',color:'#f3dfd8',category:'Moisturizers'})).slice(-12) : [])],profile:safeProfile,saved:new Set(Array.isArray(savedIds)?savedIds:[]),filter:'All products',search:'',tab:'overview',scan:null,returnTo:null,currentProduct:null,messages:{},urls:new Set(),stream:null,timers:[],faceUrl:null,busy:false};
+const ownedIds = readStorage('skimple.owned', []);
+const state = {products:[...catalog,...(Array.isArray(storedProducts) ? storedProducts.filter(p => p && typeof p.id === 'string' && p.id.startsWith('demo-') && typeof p.name === 'string').map(p=>({...catalog[0],...p,asset:'byoma',color:'#f3dfd8',category:'Moisturizers'})).slice(-12) : [])],profile:safeProfile,owned:new Set(Array.isArray(ownedIds)?ownedIds.filter(id=>typeof id==='string'):[]),saved:new Set(Array.isArray(savedIds)?savedIds:[]),filter:'All products',search:'',tab:'overview',scan:null,returnTo:null,currentProduct:null,messages:{},urls:new Set(),stream:null,timers:[],faceUrl:null,busy:false};
 const modal = $('#modal');
 let toastTimer;
 function toast(message) {clearTimeout(toastTimer);$('#toast').textContent=message;$('#toast').classList.add('show');toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3200);}
@@ -63,7 +64,7 @@ modal.addEventListener('cancel',()=>clearTimers());
 const closeButton='<button class="close-button" data-action="close" aria-label="Close dialog">×</button>';
 const modalShell=(content)=>`<div class="modal-inner">${closeButton}${content}</div>`;
 
-function updateProfileLabel() {$('#profile-label').textContent=state.profile?'My happy skin':'My skin profile';}
+function updateProfileLabel() {$('#profile-label').textContent='My skin profile';const link=$('.profile-button');const skinPage=location.hash==='#skin';$('.header-back').classList.toggle('hidden',!skinPage);if(skinPage)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');}
 function productCard(p,index) {
   const saved=state.saved.has(p.id);
   return `<article class="product-card" style="--index:${index};--card-color:${p.color}"><a class="product-link" href="#product/${encodeURIComponent(p.id)}" aria-label="Explore ${escapeHTML(p.brand)} ${escapeHTML(p.name)}"><div class="product-visual"><span class="card-tag">${icon('leaf')}${escapeHTML(p.tag)}</span><img src="assets/${p.asset}.svg" alt="${escapeHTML(p.brand)} ${escapeHTML(p.name)} packaging" loading="${index<4?'eager':'lazy'}" width="400" height="400"/></div><div class="product-copy"><div class="product-brand">${escapeHTML(p.brand)}</div><h3>${escapeHTML(p.name)}</h3><p class="product-kind">${escapeHTML(p.kind)}</p><div class="product-bottom"><span class="research-summary">${icon('flask')}${p.reviews.toLocaleString()} reviews <span>·</span> ${p.papers} papers</span><span class="round-arrow" aria-hidden="true">↗</span></div></div></a><button class="save-button ${saved?'saved':''}" data-action="save" data-id="${escapeHTML(p.id)}" aria-label="${saved?'Unsave':'Save'} ${escapeHTML(p.name)}" aria-pressed="${saved}">${icon('bookmark')}</button></article>`;
@@ -74,19 +75,18 @@ function renderShelfGrid() {
   const cards=filtered.map((p,i)=>productCard(p,i));
   if(state.filter==='All products'&&!state.search)cards.splice(3,0,scanTile());
   $('#product-grid').innerHTML=cards.length?cards.join(''):`<div class="empty-state"><h3>No shelf mates just yet.</h3><p>Try a different search, or bring a new product along.</p><button class="text-button" data-action="scan">Scan another product ↗</button></div>`;
-  $('#result-count').textContent=`${filtered.length} products, thoughtfully unpacked.`;
   $$('.filter').forEach(button=>{button.classList.toggle('active',button.dataset.filter===state.filter);button.setAttribute('aria-pressed',button.dataset.filter===state.filter);});
 }
 function renderHome() {
   state.currentProduct=null;
   $('.site-header .nav-link').classList.add('active');
-  $('#app').innerHTML=`<section class="hero"><div><div class="eyebrow"><span class="tiny-spark" aria-hidden="true">✳</span> Your skin deserves a little clarity</div><h1>A little science.<br>A lot of <em>skin love.</em></h1><p>We read the reviews. We dig into the ingredients.<br>You find what feels right for your skin.</p></div><div class="hero-art"><img src="assets/hero.svg" alt="Playful skimple skincare bottles with a curious little green monster" width="570" height="320"/><span class="hero-note">good skin days start with curiosity ♡</span></div></section><section class="shelf" aria-labelledby="shelf-title"><div class="shelf-heading"><div><h2 id="shelf-title">Meet your next skin crush.</h2><p id="result-count"></p></div><div class="hand-note">Already researched, just for you<svg viewBox="0 0 45 35" fill="none" aria-hidden="true"><path d="M3 4q23-1 29 23m-8-4 9 5 3-11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div><div class="toolbar"><div class="filters" aria-label="Filter products">${['All products','Cleansers','Serums','Moisturizers','Sunscreens'].map(name=>`<button class="filter" data-filter="${name}" aria-pressed="${name===state.filter}">${name}</button>`).join('')}</div><label class="search-wrap">${icon('search')}<input id="product-search" type="search" placeholder="Find a product or brand..." aria-label="Search products" value="${escapeHTML(state.search)}"/></label></div><div id="product-grid" class="product-grid" aria-live="polite"></div><p class="shelf-footnote">${icon('flask')} A little research goes a long way. Every product has a story.</p></section><section class="context-strip"><div class="wiggle">${monster()}</div><div><h3>${state.profile?'Your skin has entered the chat.':'Different skin. Different story.'}</h3><p>${state.profile?'Your saved skin preferences travel with you to every product.':'Give our context monster a few little details. Get a perspective that’s more you.'}</p></div><button class="text-button" data-action="profile">${state.profile?'Meet my skin profile':'Let’s make this personal'} <span>↗</span></button></section>`;
+  $('#app').innerHTML=`<section class="hero"><div><h1>A little science.<br>A lot of <em>skin love.</em></h1></div><div class="hero-art"><img src="assets/hero.svg" alt="Playful skimple skincare bottles with a curious little green monster" width="570" height="320"/><span class="hero-note">good skin days start with curiosity ♡</span></div></section><section class="shelf" aria-labelledby="shelf-title"><div class="shelf-heading"><div><h2 id="shelf-title">Meet your next skin crush.</h2></div><div class="hand-note">Already researched, just for you<svg viewBox="0 0 45 35" fill="none" aria-hidden="true"><path d="M3 4q23-1 29 23m-8-4 9 5 3-11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div><div class="toolbar"><div class="filters" aria-label="Filter products">${['All products','Cleansers','Serums','Moisturizers','Sunscreens'].map(name=>`<button class="filter" data-filter="${name}" aria-pressed="${name===state.filter}">${name}</button>`).join('')}</div><label class="search-wrap">${icon('search')}<input id="product-search" type="search" placeholder="Find a product or brand..." aria-label="Search products" value="${escapeHTML(state.search)}"/></label></div><div id="product-grid" class="product-grid" aria-live="polite"></div><p class="shelf-footnote">${icon('flask')} A little research goes a long way. Every product has a story.</p></section><section class="context-strip"><div class="wiggle">${monster()}</div><div><h3>${state.profile?'Your skin has entered the chat.':'Different skin. Different story.'}</h3><p>${state.profile?'Your saved skin preferences travel with you to every product.':'Give our context monster a few little details. Get a perspective that’s more you.'}</p></div><button class="text-button" data-action="profile">${state.profile?'Meet my skin profile':'Let’s make this personal'} <span>↗</span></button></section>`;
   renderShelfGrid();
 }
 function profileSummary() {
   if(!state.profile)return '';
   const p=state.profile;
-  const parts=[p.feel?.length?`${p.feel.join(', ')} skin tendencies`:null,p.goals?.length?`focused on ${p.goals.join(' and ').toLowerCase()}`:null,p.sensitivities?.length?`reported sensitivities: ${p.sensitivities.join(', ').toLowerCase()}`:null].filter(Boolean);
+  const parts=[p.feel?.length?`${p.feel.join(', ')} skin tendencies`:null,p.goals?.length?`focused on ${p.goals.join(' and ').toLowerCase()}`:null,p.sensitivities?.length?`reported sensitivities: ${p.sensitivities.join(', ').toLowerCase()}`:null,p.extraContext?`your extra context: “${p.extraContext}”`:null].filter(Boolean);
   return parts.join('; ')||'Photo observations saved; skin tendencies still unconfirmed';
 }
 function personalFinding(p) {
@@ -100,7 +100,7 @@ function personalFinding(p) {
 function renderDetail(p) {
   state.currentProduct=p;
   $('.site-header .nav-link').classList.remove('active');
-  $('#app').innerHTML=`<a class="back-link" href="#">← Back to the shelf</a><section class="detail-hero"><div class="detail-art" style="--card-color:${p.color}"><span class="card-tag">${icon('leaf')}${escapeHTML(p.tag)}</span><span class="detail-spark" aria-hidden="true">✧</span><img src="assets/${p.asset}.svg" alt="${escapeHTML(p.brand)} ${escapeHTML(p.name)}" width="400" height="400"/></div><div class="detail-intro"><div class="product-brand">${escapeHTML(p.brand)}</div><h1>${escapeHTML(p.name)}</h1><p class="subtitle">${escapeHTML(p.summary)}</p><div class="tags"><span class="pill">${icon('check')} Research unpacked</span><span class="pill coral">${escapeHTML(p.category.slice(0,-1))}</span><span class="pill lavender">${state.profile?'Made more personal':'Your skin, your story'}</span></div><p class="small-copy">${escapeHTML(p.kind)} · Example formula</p><div class="detail-buttons"><button class="primary" data-action="chat">${icon('chat')} Talk about it <span>↗</span></button><button class="secondary" data-action="save" data-id="${escapeHTML(p.id)}" aria-pressed="${state.saved.has(p.id)}">${icon('bookmark')}${state.saved.has(p.id)?'Saved to my shelf':'Save to my shelf'}</button></div><div class="research-summary">${icon('flask')}${p.reviews.toLocaleString()} example reviews · ${p.papers} illustrative papers · Demo research</div></div></section><nav class="report-tabs" aria-label="Product research sections">${[['overview','The little overview'],['ingredients','Ingredient deep dive'],['reviews','What people say'],['sources','The research']].map(([id,label])=>`<button class="report-tab ${state.tab===id?'active':''}" data-tab="${id}" aria-current="${state.tab===id?'page':'false'}">${label}</button>`).join('')}</nav><section class="report-content" id="report-content" aria-live="polite"></section>`;
+  $('#app').innerHTML=`<a class="back-link" href="#">← Back to the shelf</a><section class="detail-hero"><div class="detail-art" style="--card-color:${p.color}"><span class="card-tag">${icon('leaf')}${escapeHTML(p.tag)}</span><span class="detail-spark" aria-hidden="true">✧</span><img src="assets/${p.asset}.svg" alt="${escapeHTML(p.brand)} ${escapeHTML(p.name)}" width="400" height="400"/></div><div class="detail-intro"><div class="product-brand">${escapeHTML(p.brand)}</div><h1>${escapeHTML(p.name)}</h1><p class="subtitle">${escapeHTML(p.summary)}</p><div class="tags"><span class="pill">${icon('check')} Research unpacked</span><span class="pill coral">${escapeHTML(p.category.slice(0,-1))}</span><span class="pill lavender">${state.profile?'Made more personal':'Your skin, your story'}</span></div><p class="small-copy">${escapeHTML(p.kind)} · Example formula</p><div class="detail-buttons"><button class="primary" data-action="chat">${icon('chat')} Talk about it <span>↗</span></button><button class="secondary" data-action="save" data-id="${escapeHTML(p.id)}" aria-pressed="${state.saved.has(p.id)}">${icon('bookmark')}${state.saved.has(p.id)?'Saved to my shelf':'Save to my shelf'}</button></div><div class="research-summary">${icon('flask')}${p.reviews.toLocaleString()} example reviews · ${p.papers} illustrative papers · Demo research</div><button class="text-button detail-owned" data-action="toggle-owned" data-id="${escapeHTML(p.id)}" aria-pressed="${state.owned.has(p.id)}">${state.owned.has(p.id)?'✓ In my products · Remove':'+ I use this product'}</button></div></section><nav class="report-tabs" aria-label="Product research sections">${[['overview','The little overview'],['ingredients','Ingredient deep dive'],['reviews','What people say'],['sources','The research']].map(([id,label])=>`<button class="report-tab ${state.tab===id?'active':''}" data-tab="${id}" aria-current="${state.tab===id?'page':'false'}">${label}</button>`).join('')}</nav><section class="report-content" id="report-content" aria-live="polite"></section>`;
   renderReportTab();
 }
 function renderReportTab() {
@@ -115,13 +115,14 @@ function renderReportTab() {
   } else if(state.tab==='reviews') {
     html=`<h2>The word on the shelf.</h2><p>Experiences from people, kept separate from scientific evidence.</p><div class="review-layout" style="margin-top:30px"><div><div class="section-label">Overall example sentiment</div><div class="sentiment-big">${p.positive}<span>% positive</span></div><p>Across ${p.reviews.toLocaleString()} fictional review observations.</p><div class="sentiment-track" aria-label="Illustrative positive, mixed, and negative review distribution"><i style="flex:${p.positive}"></i><i style="flex:${Math.round((100-p.positive)*.65)}"></i><i style="flex:${Math.round((100-p.positive)*.35)}"></i></div><div class="sentiment-legend"><span>● Positive</span><span>● Mixed</span><span>● Negative</span></div><div class="quote">“${p.id==='ordinary'?'A little goes a long way. I added it slowly and kept the rest of my routine simple.':'It found a happy little place in my routine. The texture is what keeps me coming back.'}”<cite>Fictional review · Written for this prototype</cite></div></div><div><h3>The recurring themes</h3>${p.themes.map(([theme,label])=>`<div class="review-theme"><span>${escapeHTML(theme)}</span><strong>${escapeHTML(label)}</strong></div>`).join('')}<p class="small-copy" style="margin-top:20px">Source mix preview: retailer reviews, skincare communities, and independent reviews. These are example categories; no live reviews were retrieved.</p>${state.profile?`<div class="saved-profile"><h3>A note for your skin</h3><p>${escapeHTML(personalFinding(p))}</p></div>`:''}</div></div><p class="report-note">Review experiences are anecdotal and do not establish efficacy, safety, or causation. All figures above are fictional.</p>`;
   } else {
-    html=`<h2>A peek behind the claims.</h2><p>In the finished product, every finding would lead to a verified research paper.</p><div class="source-notice" style="margin-top:20px">These are illustrative study cards, not published citations. This prototype does not retrieve papers or verify product claims.</div>${p.ingredients.map(key=>{const i=ingredients[key];return `<article class="source-card"><span class="pill">Illustrative research record</span><h3 style="margin-top:12px">${i.study}</h3><div class="source-meta">${i.name} · Topical skincare relevance · Example evidence: ${i.confidence.toLowerCase()}</div><p>${i.finding}</p><button class="text-button" data-action="study" data-ingredient="${key}">Read evidence & limitations ↗</button></article>`;}).join('')}`;
+    html=`<h2>A peek behind the claims.</h2>${p.ingredients.map(key=>{const i=ingredients[key];return `<article class="source-card"><span class="pill">Illustrative research record</span><h3 style="margin-top:12px">${i.study}</h3><div class="source-meta">${i.name} · Topical skincare relevance · Example evidence: ${i.confidence.toLowerCase()}</div><p>${i.finding}</p><button class="text-button" data-action="study" data-ingredient="${key}">Read evidence & limitations ↗</button></article>`;}).join('')}`;
   }
   $('#report-content').innerHTML=html;
 }
 function route() {
   const match=location.hash.match(/^#product\/([^/]+)$/);
-  if(match){let id;try{id=decodeURIComponent(match[1]);}catch{id='';}const p=state.products.find(p=>p.id===id);if(p)renderDetail(p);else{renderHome();toast('That product isn’t on this demo shelf.');}}
+  if(location.hash==='#skin')renderSkinPage();
+  else if(match){let id;try{id=decodeURIComponent(match[1]);}catch{id='';}const p=state.products.find(p=>p.id===id);if(p)renderDetail(p);else{renderHome();toast('That product isn’t on this demo shelf.');}}
   else renderHome();
   updateProfileLabel();
 }
@@ -182,31 +183,30 @@ function openProfile(returnTo=null, forceEdit=false) {
   if(state.profile&&!forceEdit)renderProfileSummary();else renderQuestionnaire();
 }
 function renderQuestionnaire() {
-  const p=state.profileDraft||state.profile||{feel:[],goals:[],sensitivities:[],routine:[]};
-  const question=(name,title,choices,multiple=true)=>`<fieldset class="question"><legend>${title} ${multiple?'<span>Pick any that fit.</span>':''}</legend><div class="choices">${choices.map(choice=>`<label class="choice"><input type="${multiple?'checkbox':'radio'}" name="${name}" value="${escapeHTML(choice)}" ${(p[name]||[]).includes(choice)?'checked':''}/><span>${choice}</span></label>`).join('')}</div></fieldset>`;
-  showModal(modalShell(`<div class="step-label"><i></i> A quick hello to your skin · About 30 seconds</div><div class="profile-monster">${monster()}<div><h2>Num num. A little context?</h2><p>The more I know, the more this feels like you.</p></div></div><form id="skin-form">${question('feel','After washing, your skin usually feels…',['Dry & tight','Oily','Combination','Comfortable','Not sure'],false)}${question('sensitivities','Anything your skin tends to dislike?',['Fragrance','Strong actives','New products','Nothing I know of'])}${question('goals','What would you love a little help with?',['Hydration','Blemishes','Uneven tone','Barrier support','Sun protection'])}${question('routine','What’s already in your routine?',['Cleanser','Moisturizer','Sunscreen','Retinoid','Exfoliating acids','Keeping it simple'])}<div id="profile-error" class="error-message" role="alert"></div><button type="button" class="text-button" data-action="face">${icon('camera')}${p.hasPhoto?'Update my temporary face photo':'Or add a temporary face photo'} ↗</button><div class="privacy-note">${icon('shield')}Only your text preferences are saved in this browser. You can edit or clear them anytime.</div><div class="modal-actions">${state.returnTo?'<button type="button" class="secondary" data-action="return">← Go back</button>':''}<button class="primary" type="submit">Feed the context monster <span>♡</span></button></div></form>`));
+  const p=state.profileDraft||state.profile||{};
+  showModal(modalShell(`<div class="step-label"><i></i> A quick hello to your skin · About 30 seconds</div><div class="profile-monster">${monster()}<div><h2>Num num. A little context?</h2><p>The more I know, the more this feels like you.</p></div></div>${skinQuestionnaireMarkup(p)}`));
 }
 function saveProfile(form) {
   const data=new FormData(form);
   const feel=data.getAll('feel'),goals=data.getAll('goals'),sensitivities=data.getAll('sensitivities');
-  if(!feel.length||!goals.length){$('#profile-error').textContent='A skin feel and one little goal are all we need to start.';return;}
-  if(sensitivities.includes('Nothing I know of')&&sensitivities.length>1){$('#profile-error').textContent='Choose your sensitivities, or “Nothing I know of”, so your profile is clear.';return;}
-  state.profile={feel,goals,sensitivities,routine:data.getAll('routine'),hasPhoto:state.profile?.hasPhoto||false,observations:state.profile?.observations||''};
+  if(!feel.length||!goals.length){$('[data-profile-error]',form).textContent='A skin feel and one little goal are all we need to start.';return;}
+  if(sensitivities.includes('Nothing I know of')&&sensitivities.length>1){$('[data-profile-error]',form).textContent='Choose your sensitivities, or “Nothing I know of”, so your profile is clear.';return;}
+  state.profile={feel,goals,sensitivities,routine:data.getAll('routine'),extraContext:String(data.get('extraContext')||'').trim().slice(0,1500),hasPhoto:state.profile?.hasPhoto||false,observations:state.profile?.observations||''};
   state.profileDraft=null;
   persistProfile();returnFromProfile();toast('Num num. Your skin context is saved!');
 }
-function persistProfile() {writeStorage('skimple.profile',state.profile);updateProfileLabel();if(state.currentProduct)renderDetail(state.currentProduct);else if(!location.hash||location.hash==='#')renderHome();}
+function persistProfile() {writeStorage('skimple.profile',state.profile);updateProfileLabel();if(location.hash==='#skin')renderSkinPage();else if(state.currentProduct)renderDetail(state.currentProduct);else if(!location.hash||location.hash==='#')renderHome();}
 function renderProfileSummary() {
   const p=state.profile;
-  showModal(modalShell(`<div class="step-label"><i></i> Your little skin story</div><div class="profile-monster">${monster()}<div><h2>Context: happily fed.</h2><p>This profile travels with you to every product.</p></div></div><div class="saved-profile"><h3>Here’s what you’ve shared.</h3><p>${escapeHTML(profileSummary())}.</p><div class="tags">${[...(p.feel||[]),...(p.goals||[])].map(label=>`<span class="pill">${escapeHTML(label)}</span>`).join('')}</div>${p.routine?.length?`<p style="margin-top:14px">Routine: ${escapeHTML(p.routine.join(', '))}.</p>`:''}${p.hasPhoto?`<p style="margin-top:14px">${escapeHTML(p.observations)}</p><p style="margin-top:8px"><strong>Face photo discarded. Only demo observation text remains.</strong></p>`:''}</div><div class="privacy-note">${icon('shield')}Saved locally in this browser. No account, uploads, or AI connection.</div><div class="modal-actions"><button class="secondary" data-action="edit-profile">Edit my answers</button><button class="primary" data-action="return">${state.returnTo?'Bring my context along':'Happy with my skin story'} →</button></div><button class="delete-profile" data-action="forget-profile">Clear my saved skin profile</button>`));
+  showModal(modalShell(`<div class="step-label"><i></i> Your little skin story</div><div class="profile-monster">${monster()}<div><h2>Context: happily fed.</h2><p>This profile travels with you to every product.</p></div></div><div class="saved-profile"><h3>Here’s what you’ve shared.</h3><p>${escapeHTML(profileSummary())}.</p><div class="tags">${[...(p.feel||[]),...(p.goals||[])].map(label=>`<span class="pill">${escapeHTML(label)}</span>`).join('')}</div>${p.extraContext?`<p style="margin-top:14px"><strong>Tell me more:</strong> ${escapeHTML(p.extraContext)}</p>`:''}${p.routine?.length?`<p style="margin-top:14px">Routine: ${escapeHTML(p.routine.join(', '))}.</p>`:''}${p.hasPhoto?`<p style="margin-top:14px">${escapeHTML(p.observations)}</p><p style="margin-top:8px"><strong>Face photo discarded. Only demo observation text remains.</strong></p>`:''}</div><div class="privacy-note">${icon('shield')}Saved locally in this browser. No account, uploads, or AI connection.</div><div class="modal-actions"><button class="secondary" data-action="edit-profile">Edit my answers</button><button class="primary" data-action="return">${state.returnTo?'Bring my context along':'Happy with my skin story'} →</button></div><button class="delete-profile" data-action="forget-profile">Clear my saved skin profile</button>`));
 }
 function returnFromProfile() {
   const target=state.returnTo;state.returnTo=null;
   if(target==='scan'&&state.scan)renderScan();else if(target==='chat')openChat();else closeModal();
 }
 function renderFace() {
-  const questions=$('#skin-form');
-  if(questions){const values=new FormData(questions);state.profileDraft=Object.fromEntries(['feel','goals','sensitivities','routine'].map(key=>[key,values.getAll(key)]));}
+  const questions=$('#skin-form',modal)||$('#skin-page-form');
+  if(questions){const values=new FormData(questions);state.profileDraft={...Object.fromEntries(['feel','goals','sensitivities','routine'].map(key=>[key,values.getAll(key)])),extraContext:String(values.get('extraContext')||'').trim().slice(0,1500)};}
   showModal(modalShell(`<div class="step-label"><i></i> Optional · Your face, your choice</div><h2>Say a little hello.</h2><p class="intro">A photo can add visible observations, like shine or redness. It can’t diagnose a condition or determine your skin type.</p>${state.faceUrl?`<img class="face-preview" src="${state.faceUrl}" alt="Your temporary selected face photo"/><button class="text-button" data-action="replace-face">Choose a different photo ↗</button>`:`<label class="upload-zone face-upload">${icon('face')}<strong>Upload a face photo</strong><small>JPG, PNG, WebP · Up to 10 MB · Natural light is lovely</small><input type="file" accept="image/jpeg,image/png,image/webp" data-upload="face" aria-label="Upload a temporary face photo"/></label><div class="camera-row"><button class="secondary" data-action="face-camera">${icon('camera')} Take a photo</button><button class="text-button" data-action="demo-face">Use a demo instead ↗</button></div>`}<div class="saved-profile"><h3>A face photo is a passing hello.</h3><p>Your photo is never uploaded or saved. We release its temporary preview when you continue or close this window. Only clearly labeled demo observations are kept.</p></div><form id="face-form"><label class="check-label"><input type="checkbox" name="consent" required/>I’m happy to use this photo temporarily for this demo. I understand the observations are a sample, not an actual assessment.</label><div class="modal-actions"><button type="button" class="secondary" data-action="edit-profile">← Quick questions</button><button class="primary" type="submit" ${state.faceUrl?'':'disabled'}>Add my skin context →</button></div></form>`));
 }
 function processFace() {
@@ -261,6 +261,7 @@ function chatResponse(question,p) {
   else if(/use|routine|layer|often|morning|night/.test(q))reply=`The example category here is ${p.category.toLowerCase()}. ${p.category==='Cleansers'?'A cleanser usually comes before leave-on products.':p.category==='Sunscreens'?'Sunscreen is generally the final skincare step before makeup; follow the label for application and reapplication.':p.category==='Serums'?'A serum generally goes before a moisturizer. Introduce one new product at a time.':'A moisturizer generally follows cleansing and lighter layers.'} ${p.caution} ${context}`;
   else if(/skin|suit|fit|good|dry|oily|sensitive|custom/.test(q))reply=`In this example report, ${p.name} may suit ${p.skin.join(', ').toLowerCase()} skin tendencies. ${context}`;
   else reply=`For “${question}”, here’s the product context this demo can share: ${p.summary} ${p.caution} ${context} You can also ask about ingredients, review themes, or routine placement.`;
+  if(state.profile?.extraContext&&!reply.includes(state.profile.extraContext))reply+=` Your extra context is also here: “${state.profile.extraContext}”.`;
   return {role:'assistant',text:reply,source:`Example ${p.brand} product notes${state.profile?' + your saved skin preferences':''} · Scripted demo response`};
 }
 function sendChat(question) {
@@ -277,6 +278,7 @@ function showHow() {
 }
 
 document.addEventListener('click', event=>{
+  const skinLink=event.target.closest('[data-skin-scroll]');if(skinLink){event.preventDefault();document.getElementById(skinLink.dataset.skinScroll)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return;}
   const filter=event.target.closest('[data-filter]');if(filter){state.filter=filter.dataset.filter;renderShelfGrid();return;}
   const tab=event.target.closest('[data-tab]');if(tab){state.tab=tab.dataset.tab;renderReportTab();return;}
   const suggestion=event.target.closest('[data-question]');if(suggestion){sendChat(suggestion.dataset.question);return;}
@@ -289,6 +291,12 @@ document.addEventListener('click', event=>{
     case 'demo-product':state.scan.front='assets/byoma.svg';state.scan.back='assets/byoma.svg';state.scan.demo=true;renderScan();toast('A demo product is ready for its close-up.');break;
     case 'extract':extractProduct();break;
     case 'profile':openProfile();break;
+    case 'update-skin':openProfile(null,true);break;
+    case 'add-owned':openProductLookup(button.dataset.query||'');break;
+    case 'select-owned':addOwnedProduct(button.dataset.id);break;
+    case 'lookup-scan':openScan();break;
+    case 'remove-owned':state.owned.delete(button.dataset.id);persistOwnedProducts();renderPersonalSections();toast('Removed from your products. Your research stays on the main shelf.');break;
+    case 'toggle-owned':if(state.owned.has(button.dataset.id)){state.owned.delete(button.dataset.id);persistOwnedProducts();renderDetail(state.currentProduct);toast('Removed from your products.');}else addOwnedProduct(button.dataset.id);break;
     case 'scan-profile':openProfile('scan');break;
     case 'scan-customize':state.returnTo='scan';renderFace();break;
     case 'edit-profile':renderQuestionnaire();break;
@@ -305,18 +313,19 @@ document.addEventListener('click', event=>{
     case 'study':showStudy(button.dataset.ingredient);break;
     case 'save':{
       const id=button.dataset.id;if(state.saved.has(id))state.saved.delete(id);else state.saved.add(id);writeStorage('skimple.saved',[...state.saved]);
-      if(state.currentProduct)renderDetail(state.currentProduct);else renderShelfGrid();
+      if(location.hash==='#skin')renderPersonalSections();else if(state.currentProduct)renderDetail(state.currentProduct);else renderShelfGrid();
       toast(state.saved.has(id)?'A little favorite, saved to your shelf.':'Removed from your favorites.');break;
     }
   }
 });
-document.addEventListener('input', event=>{if(event.target.id==='product-search'){state.search=event.target.value;renderShelfGrid();}});
+document.addEventListener('keydown',event=>{if(event.target.id==='owned-search')handleLookupKey(event);});
+document.addEventListener('input', event=>{if(event.target.id==='owned-search')renderLookupResults(event.target.value);if(event.target.id==='product-search'){state.search=event.target.value;renderShelfGrid();}});
 document.addEventListener('change', event=>{if(event.target.dataset.upload)receiveUpload(event.target.files[0],event.target.dataset.upload);});
 document.addEventListener('submit', event=>{
   const form=event.target;
-  if(!['confirm-product','skin-form','face-form','chat-form'].includes(form.id))return;
+  if(!['confirm-product','skin-form','skin-page-form','face-form','chat-form'].includes(form.id))return;
   event.preventDefault();
-  if(form.id==='skin-form')saveProfile(form);
+  if(form.id==='skin-form'||form.id==='skin-page-form')saveProfile(form);
   if(form.id==='confirm-product'){
     const data=Object.fromEntries(new FormData(form));Object.keys(data).forEach(key=>data[key]=data[key].trim());
     if(!data.brand||!data.name||!data.inci){toast('Please add a brand, product name, and ingredient list.');return;}
